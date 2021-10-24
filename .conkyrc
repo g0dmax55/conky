@@ -1,3 +1,6 @@
+
+#coded by g0dmax55
+
 conky.config = {
     alignment = 'top_right',
     background = true,
