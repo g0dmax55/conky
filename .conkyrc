@@ -117,20 +117,4 @@ $hr
 ${color}Wifi-Signal-Level: ${color red}${wireless_link_qual_perc wlan0}%${if_up wlan0}
 $color${wireless_link_bar wlan0}${else} NO WIFI$endif ${membar 3}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ]]
