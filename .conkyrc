@@ -71,7 +71,7 @@ $hr
 $hr
 ${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Info : ${color green}${execi 50 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}
 ${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Temperature : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader)°C %"; else echo "NO GPU Detected"; fi'}${endif}
-${color #8a2be2}Gpu Fan Speed : ${color green}${execi 1 sensors | grep 'gpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+${color #8a2be2}GPU Fan Speed : ${color green}${execi 1 sensors | grep 'gpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
 ${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Usage : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}${color dark cyan} ${execibar 1 10 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "0"; fi' -maxvalue 100}
 $hr
 $hr
