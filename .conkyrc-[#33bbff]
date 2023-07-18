@@ -1,0 +1,101 @@
+
+--[[coded by g0dmax55]]
+
+conky.config = {
+    alignment = 'top_right',
+    background = true,
+    border_width = 1,
+    cpu_avg_samples = 2,
+    default_color = '#33bbff',
+    default_outline_color = 'white',
+    default_shade_color = 'white',
+    double_buffer = true,
+    draw_borders = false,
+    draw_graph_borders = true,
+    draw_outline = false,
+    draw_shades = false,
+    extra_newline = false,
+    font = 'DejaVu Sans Mono:size=10',
+    gap_x = 60,
+    gap_y = 60,
+    minimum_height = 5,
+    minimum_width = 5,
+    net_avg_samples = 2,
+    no_buffers = true,
+    out_to_console = false,
+    out_to_ncurses = false,
+    out_to_stderr = false,
+    out_to_x = true,
+    own_window = true,
+    own_window_class = 'Conky',
+    own_window_argb_visual = true,
+    own_window_argb_value = 25,
+    own_window_type = 'desktop',
+    own_window_hints = 'undecorated,below,skip_taskbar,skip_pager,sticky',
+    show_graph_range = false,
+    show_graph_scale = false,
+    stippled_borders = 0,
+    update_interval = 1.0,
+    uppercase = false,
+    use_spacer = 'left',
+    use_xft = true, 
+}
+
+conky.text = [[
+${color green} [Coded by g0dmax55]
+${color blue}Info : ${color}${scroll 45 $sysname $nodename $kernel $machine} ${color dark cyan}
+$hr
+${color blue} Name                    PID         CPU%       MEM%
+${color red} ${top name 1}     ${top pid 1}      ${top cpu 1}     ${top mem 1}
+${color} ${top name 2}     ${top pid 2}      ${top cpu 2}     ${top mem 2}
+${color} ${top name 3}     ${top pid 3}      ${top cpu 3}     ${top mem 3}
+${color} ${top name 4}     ${top pid 4}      ${top cpu 4}     ${top mem 4}
+${color} ${top name 5}     ${top pid 5}      ${top cpu 5}     ${top mem 5}
+${color} ${top name 6}     ${top pid 6}      ${top cpu 6}     ${top mem 6}
+${color} ${top name 7}     ${top pid 7}      ${top cpu 7}     ${top mem 7}
+${color} ${top name 8}     ${top pid 8}      ${top cpu 8}     ${top mem 8}
+${color} ${top name 9}     ${top pid 9}      ${top cpu 9}     ${top mem 9}
+${color} ${top name 10}     ${top pid 10}      ${top cpu 10}     ${top mem 10} ${color dark cyan}
+$hr
+${color green}Uptime : ${color green}$uptime
+${color}CPU Info : ${execi 1000 grep model /proc/cpuinfo | cut -d : -f2 | tail -1 | sed 's/\s//'}
+${color}Frequency [MHz] : $freq
+${color}Frequency [MHz] : $freq_g
+${color}Processes :$color$processes ${color}Running:$color $running_processes ${color dark cyan}
+${color red}CPU Temperature : ${color green}${execi 1 sensors | grep 'Tctl' | awk '{print $2}'} %
+${color red}RAM Usage : $color$mem/$memmax - $memperc% ${color}${membar 10}
+${color red}Swap Usage : $color$swap/$swapmax - $swapperc% ${color}${swapbar 10}
+${color red}Cpu Usage :${color green} $cpu% ${color}${cpubar 10} ${color dark cyan}
+${color red}Cpu Fan Speed : ${color green}${execi 1 sensors | grep 'cpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+$hr
+$hr
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Info : ${color green}${execi 50 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Temperature : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader)°C %"; else echo "NO GPU Detected"; fi'}${endif}
+${color #8a2be2}GPU Fan Speed : ${color green}${execi 1 sensors | grep 'gpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Usage : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}${color} ${execibar 1 10 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "0"; fi' -maxvalue 100} ${color dark cyan}
+$hr
+$hr
+${color}File Systems:
+${fs_used /}/${fs_size /}${color} ${fs_bar 10} ${color dark cyan}
+$hr
+$hr
+${color}Down : ${color red}${downspeed wlan0}${color}             Up : ${color green}${upspeed wlan0}
+${color}${upspeedgraph wlan0 50,200 303030 00ff00} ${alignr}$color${downspeedgraph wlan0 50,200 303030 ff0000} ${color dark cyan}
+$hr
+$hr
+${color}Ip-Wlan0 :${color green} ${addr wlan0} ${color dark cyan}     ${color}${alignr}Ip-Eth0 :${color green} ${addr eth0} ${color dark cyan}
+$hr
+${color}Ip-Wg3 :${color green} ${addr g0dmax55-wg3} ${color dark cyan}        ${color}${alignr}Ip-Tun0 :${color green} ${addr tun0} ${color dark cyan}
+$hr
+${color}Wan-Ip : ${if_up wlan0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color} Time : ${color green}${exec date +"%r"} ${color dark cyan}
+$hr
+$hr
+${color}Wlan0-Essid :${color green} ${wireless_essid wlan0}
+${color}MAC Address : ${color green}${wireless_ap wlan0} ${color dark cyan}
+$hr
+$hr
+${color}Wifi-Signal-Level : ${color green}${if_up wlan0}${wireless_link_qual_perc wlan0}%${else}${color red}Disconnected${endif}
+${color}${wireless_link_bar 15 wlan0}  ${color dark cyan}
+$hr
+
+]]
