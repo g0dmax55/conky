@@ -97,5 +97,4 @@ $hr
 ${color}Wifi-Signal-Level : ${color green}${if_up wlan0}${wireless_link_qual_perc wlan0}%${else}${color red}Disconnected${endif}
 ${color dark cyan}${wireless_link_bar 15 wlan0}  ${color dark cyan}
 $hr
-
 ]]
