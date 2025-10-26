@@ -28,7 +28,7 @@ conky.config = {
     out_to_x = true,
     own_window = true,
     own_window_class = 'Conky',
-    own_window_argb_visual = false,
+    own_window_argb_visual = true,
     own_window_argb_value = 25,
     own_window_type = 'desktop',
     own_window_hints = 'undecorated,below,skip_taskbar,skip_pager,sticky',
@@ -67,6 +67,9 @@ ${color red}RAM Usage : $color$mem/$memmax - $memperc% ${color}${membar 10}
 ${color red}Swap Usage : $color$swap/$swapmax - $swapperc% ${color dark cyan}${swapbar 10}
 ${color red}Cpu Usage :${color green} $cpu% ${color dark cyan}${cpubar 10} ${color dark cyan}
 ${color red}Cpu Fan Speed : ${color green}${execi 1 sensors | grep 'cpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+${if_existing /sys/class/drm/card0/device/gpu_busy_percent}${color #FF4500}GPU (AMD): ${color green}\
+${execi 1 /bin/bash -c 'if [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then cat /sys/class/drm/card0/device/gpu_busy_percent; else echo "0"; fi'}% \
+${color dark cyan}${execibar 1 10 /bin/bash -c 'if [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then cat /sys/class/drm/card0/device/gpu_busy_percent; else echo "0"; fi'}${endif}
 $hr
 $hr
 ${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Info : ${color green}${execi 50 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}
@@ -79,15 +82,15 @@ ${color}File Systems:
 ${fs_used /}/${fs_size /}${color dark cyan} ${fs_bar 10} ${color dark cyan}
 $hr
 $hr
-${color}Down : ${color red}${downspeed enp2s0}${color}             Up : ${color green}${upspeed enp2s0}
-${color}${upspeedgraph enp2s0 50,200 303030 00ff00} ${alignr}$color${downspeedgraph enp2s0 50,200 303030 ff0000} ${color dark cyan}
+${color}Down : ${color red}${downspeed wlan0}${color}             Up : ${color green}${upspeed wlan0}
+${color}${upspeedgraph wlan0 50,200 303030 00ff00} ${alignr}$color${downspeedgraph wlan0 50,200 303030 ff0000} ${color dark cyan}
 $hr
 $hr
-${color red}Ip-Wlan0 :${color green} ${addr wlan0} ${color dark cyan}     ${color red}${alignr}Ip-Eth0 :${color green} ${addr enp2s0} ${color dark cyan}
+${color red}Ip-Wlan0 :${color green} ${addr wlan0} ${color dark cyan}     ${color red}${alignr}Ip-Eth0 :${color green} ${addr eth0} ${color dark cyan}
 $hr
 ${color red}Ip-Wg3 :${color green} ${addr g0dmax55-wg3} ${color dark cyan}        ${color red}${alignr}Ip-Tun0 :${color green} ${addr tun0} ${color dark cyan}
 $hr
-${color red}Wan-Ip : ${if_up enp2s0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} Time : ${color green}${exec date +"%r"} ${color dark cyan}
+${color red}Wan-Ip : ${if_up wlan0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} Time : ${color green}${exec date +"%r"} ${color dark cyan}
 $hr
 $hr
 ${color red}Wlan0-Essid :${color green} ${wireless_essid wlan0}
@@ -97,4 +100,5 @@ $hr
 ${color}Wifi-Signal-Level : ${color green}${if_up wlan0}${wireless_link_qual_perc wlan0}%${else}${color red}Disconnected${endif}
 ${color dark cyan}${wireless_link_bar 15 wlan0}  ${color dark cyan}
 $hr
+
 ]]
