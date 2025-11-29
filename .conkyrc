@@ -90,7 +90,7 @@ ${color red}Ip-Wlan0 :${color green} ${addr wlan0} ${color dark cyan}     ${colo
 $hr
 ${color red}Ip-Wg3 :${color green} ${addr g0dmax55-wg3} ${color dark cyan}        ${color red}${alignr}Ip-Tun0 :${color green} ${addr tun0} ${color dark cyan}
 $hr
-${color red}Wan-Ip : ${if_up wlan0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} Time : ${color green}${exec date +"%r"} ${color dark cyan}
+${color red}Wan-Ip : ${if_up wlan0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} ${color dark cyan}
 $hr
 $hr
 ${color red}Wlan0-Essid :${color green} ${wireless_essid wlan0}
