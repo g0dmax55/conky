@@ -58,46 +58,47 @@ ${color} ${top name 9}     ${top pid 9}      ${top cpu 9}     ${top mem 9}
 ${color} ${top name 10}     ${top pid 10}      ${top cpu 10}     ${top mem 10}
 $hr
 ${color green}Uptime : ${color green}$uptime
+${color green}Battery : ${color green}$battery_percent% (${battery_short}) ${color dark cyan}${battery_bar 6}
 ${color}CPU Info : ${execi 1000 grep model /proc/cpuinfo | cut -d : -f2 | tail -1 | sed 's/\s//'}
 ${color}Frequency [MHz] : $freq
 ${color}Frequency [MHz] : $freq_g
 ${color}Processes :$color$processes ${color}Running:$color $running_processes ${color dark cyan}
-${color red}CPU Temperature : ${color green}${execi 1 sensors | grep 'Tctl' | awk '{print $2}'} %
+${color red}CPU Temperature : ${color green}${execi 3 sensors | grep 'Tctl' | awk '{print $2}' | tr -d '+'}
 ${color red}RAM Usage : $color$mem/$memmax - $memperc% ${color}${membar 10}
 ${color red}Swap Usage : $color$swap/$swapmax - $swapperc% ${color dark cyan}${swapbar 10}
-${color red}Cpu Usage :${color green} $cpu% ${color dark cyan}${cpubar 10} ${color dark cyan}
-${color red}Cpu Fan Speed : ${color green}${execi 1 sensors | grep 'cpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+${color red}CPU Usage :${color green} $cpu% ${color dark cyan}${cpubar 10} ${color dark cyan}
+${color red}CPU Fan Speed : ${color green}${execi 1 sensors | grep 'cpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
 ${if_existing /sys/class/drm/card0/device/gpu_busy_percent}${color #FF4500}GPU (AMD): ${color green}\
 ${execi 1 /bin/bash -c 'if [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then cat /sys/class/drm/card0/device/gpu_busy_percent; else echo "0"; fi'}% \
 ${color dark cyan}${execibar 1 10 /bin/bash -c 'if [ -f /sys/class/drm/card0/device/gpu_busy_percent ]; then cat /sys/class/drm/card0/device/gpu_busy_percent; else echo "0"; fi'}${endif}
 $hr
 $hr
-${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Info : ${color green}${execi 50 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=name --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}
-${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Temperature : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader)°C %"; else echo "NO GPU Detected"; fi'}${endif}
-${color #8a2be2}GPU Fan Speed : ${color green}${execi 1 sensors | grep 'gpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
-${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Usage : ${color green}${execi 1 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "NO GPU Detected"; fi'}${endif}${color dark cyan} ${execibar 1 10 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then echo "$(/usr/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader)"; else echo "0"; fi' -maxvalue 100}
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Info : ${color green}${execi 50 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then nvidia-smi --query-gpu=gpu_name --format=csv,noheader,nounits; else echo "NO GPU Detected"; fi'}${endif}
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Temperature : ${color green}${execi 3 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk "{print \$1\"°C\"}"; else echo "NO GPU Detected"; fi'}${endif}
+${color #8a2be2}GPU Fan Speed : ${color green}${execi 3 sensors | grep 'gpu_fan' | awk '{print $2,$3}'} ${color dark cyan}
+${if_existing /usr/bin/nvidia-smi}${color #8a2be2}GPU Usage : ${color green}${execi 3 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits | awk "{print \$1\" %\"}"; else echo "NO GPU Detected"; fi'}${endif}${color dark cyan} ${execibar 3 10 /bin/bash -c 'if /usr/bin/nvidia-smi &> /dev/null; then nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits; else echo "0"; fi' -maxvalue 100}
 $hr
 $hr
 ${color}File Systems:
 ${fs_used /}/${fs_size /}${color dark cyan} ${fs_bar 10} ${color dark cyan}
 $hr
 $hr
-${color}Down : ${color red}${downspeed wlan0}${color}             Up : ${color green}${upspeed wlan0}
-${color}${upspeedgraph wlan0 50,200 303030 00ff00} ${alignr}$color${downspeedgraph wlan0 50,200 303030 ff0000} ${color dark cyan}
+${color}Down : ${color #ff0000}${downspeed ${gw_iface}}${color}             Up : ${color #00ff00}${upspeed ${gw_iface}}
+${color}${downspeedgraph ${gw_iface} 50,200 303030 ff0000 -l} ${alignr}$color${upspeedgraph ${gw_iface} 50,200 303030 00ff00 -l} ${color dark cyan}
 $hr
 $hr
-${color red}Ip-Wlan0 :${color green} ${addr wlan0} ${color dark cyan}     ${color red}${alignr}Ip-Eth0 :${color green} ${addr eth0} ${color dark cyan}
+${color red}WLAN IP :${color green} ${addr wlan0} ${color dark cyan}     ${color red}${alignr}ETH IP :${color green} ${addr eth0} ${color dark cyan}
 $hr
-${color red}Ip-Wg3 :${color green} ${addr g0dmax55-wg3} ${color dark cyan}        ${color red}${alignr}Ip-Tun0 :${color green} ${addr tun0} ${color dark cyan}
+${color red}WG3 IP :${color green} ${addr g0dmax55-wg3} ${color dark cyan}        ${color red}${alignr}TUN0 IP :${color green} ${addr tun0} ${color dark cyan}
 $hr
-${color red}Wan-Ip : ${if_up wlan0}${color green}${execi 100 curl -s ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} ${color dark cyan}
+${color red}Public IP : ${if_existing /proc/net/route}${color green}${execi 100 curl -s --connect-timeout 5 ifconfig.me}${else}${color green}No Ip${endif} ${color dark cyan}${alignr}${offset -10}${color dark cyan}${color red} ${color dark cyan}
 $hr
 $hr
-${color red}Wlan0-Essid :${color green} ${wireless_essid wlan0}
+${color red}Wi-Fi Network :${color green} ${wireless_essid wlan0}
 ${color red}MAC Address : ${color green}${wireless_ap wlan0} ${color dark cyan}
 $hr
 $hr
-${color}Wifi-Signal-Level : ${color green}${if_up wlan0}${wireless_link_qual_perc wlan0}%${else}${color red}Disconnected${endif}
+${color}Wi-Fi Signal : ${color green}${if_up wlan0}${wireless_link_qual_perc wlan0}%${else}${color red}Disconnected${endif}
 ${color dark cyan}${wireless_link_bar 15 wlan0}  ${color dark cyan}
 $hr
 
