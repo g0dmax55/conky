@@ -1,8 +1,8 @@
 background yes
 use_xft yes
-xftfont monospace:pixelsize=12
+xftfont monospace:pixelsize=13
 xftalpha 1
-update_interval 1.0
+update_interval 0.5
 total_run_times 0
 own_window yes
 own_window_type desktop
@@ -21,7 +21,7 @@ default_shade_color black
 default_outline_color white
 alignment top_right
 gap_x 10
-gap_y 40
+gap_y 30
 no_buffers yes
 cpu_avg_samples 2
 net_avg_samples 2
@@ -41,73 +41,65 @@ color6 FF0000
 # Red (Tree Structure)
 
 TEXT
-#leet chars: ┤┤└└┴┴┐┐││┘┘┌┌├├┬┬┼┼┴┴── ││ ▽▼△▲▵▴▾▿
-${alignr}${offset -135}${voffset -0}${font DejaVu Sans:pixelsize=15}${color2}g0dmax55${font}
-${alignr}${offset -145}${color6}▲${color}
 ${alignr}${offset -10}${color6}┌──────────────────────────┐${color}
-${alignr}${offset -10}${color6}│${color} ${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}│${color} ${color6}[${color2}${exec uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}│${color} ${color6}[${color2}$machine${color6}]${color} ${color1}arch${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}└${color} ${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┘    │${color}
-${alignr}${offset -10}$font ${color6}│${color}
+${alignr}${offset -10}${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${exec whoami}${color6}]${color} ${color1}user${color} ${color6}─┬─┘${color}
+${alignr}${offset -10}${color6}[${color2}${exec uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}$machine${color6}]${color} ${color1}arch${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${exec curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┘${color}
+${alignr}${offset -10}${color6}│${color}
 ${alignr}${offset -10}${color1}system${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color1}cpu${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color2}${cpubar 8,100} ${color6}[${color2}${cpu cpu0}%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${exec cat /proc/cpuinfo | grep "model name" | head -1 | cut -d':' -f2 | cut -c 2-25}${color6}]${color} ${color1}name${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${freq_g}GHz${color6}]${color} ${color1}clock${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color2}${cpubar 7,100} ${color6}[${color2}${cpu cpu0}%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu1}%${color6}]${color} ${color1}C01${color} ${color6}[${color2}${cpu cpu2}%${color6}]${color} ${color1}C02${color} ${color6}[${color2}${cpu cpu3}%${color6}]${color} ${color1}C03${color} ${color6}[${color2}${cpu cpu4}%${color6}]${color} ${color1}C04${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu5}%${color6}]${color} ${color1}C05${color} ${color6}[${color2}${cpu cpu6}%${color6}]${color} ${color1}C06${color} ${color6}[${color2}${cpu cpu7}%${color6}]${color} ${color1}C07${color} ${color6}[${color2}${cpu cpu8}%${color6}]${color} ${color1}C08${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu9}%${color6}]${color} ${color1}C09${color} ${color6}[${color2}${cpu cpu10}%${color6}]${color} ${color1}C10${color} ${color6}[${color2}${cpu cpu11}%${color6}]${color} ${color1}C11${color} ${color6}[${color2}${cpu cpu12}%${color6}]${color} ${color1}C12${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu13}%${color6}]${color} ${color1}C13${color} ${color6}[${color2}${cpu cpu14}%${color6}]${color} ${color1}C14${color} ${color6}[${color2}${cpu cpu15}%${color6}]${color} ${color1}C15${color} ${color6}[${color2}${cpu cpu16}%${color6}]${color} ${color1}C16${color} ${color6}─┘    │    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │    │${color}
-${alignr}${offset -10}${color1}freq${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color1}cores-mhz${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq 1}${color6}]${color} ${color1}C01${color} ${color6}[${color2}${freq 2}${color6}]${color} ${color1}C02${color} ${color6}[${color2}${freq 3}${color6}]${color} ${color1}C03${color} ${color6}[${color2}${freq 4}${color6}]${color} ${color1}C04${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq 5}${color6}]${color} ${color1}C05${color} ${color6}[${color2}${freq 6}${color6}]${color} ${color1}C06${color} ${color6}[${color2}${freq 7}${color6}]${color} ${color1}C07${color} ${color6}[${color2}${freq 8}${color6}]${color} ${color1}C08${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq 9}${color6}]${color} ${color1}C09${color} ${color6}[${color2}${freq 10}${color6}]${color} ${color1}C10${color} ${color6}[${color2}${freq 11}${color6}]${color} ${color1}C11${color} ${color6}[${color2}${freq 12}${color6}]${color} ${color1}C12${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq 13}${color6}]${color} ${color1}C13${color} ${color6}[${color2}${freq 14}${color6}]${color} ${color1}C14${color} ${color6}[${color2}${freq 15}${color6}]${color} ${color1}C15${color} ${color6}[${color2}${freq 16}${color6}]${color} ${color1}C16${color} ${color6}─┘    │    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}$loadavg${color6}]${color} ${color1}load${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top name 1}${color} ${color2}${top cpu 1}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top name 2}${color} ${color2}${top cpu 2}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top name 3}${color} ${color2}${top cpu 3}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top name 4}${color} ${color2}${top cpu 4}${color6}]${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
+${alignr}${offset -10}${color1}top${color} ${color6}─┘    │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top name 1}${color} ${color2}${top cpu 1}${color6}]${color} ${color6}[${color1}${top name 2}${color} ${color2}${top cpu 2}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top name 3}${color} ${color2}${top cpu 3}${color6}]${color} ${color6}[${color1}${top name 4}${color} ${color2}${top cpu 4}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top name 5}${color} ${color2}${top cpu 5}${color6}]${color} ${color6}[${color1}${top name 6}${color} ${color2}${top cpu 6}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top name 7}${color} ${color2}${top cpu 7}${color6}]${color} ${color6}[${color1}${top name 8}${color} ${color2}${top cpu 8}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top name 9}${color} ${color2}${top cpu 9}${color6}]${color} ${color6}[${color1}${top name 10}${color} ${color2}${top cpu 10}${color6}]${color} ${color6}─┘         │    │${color}
 ${alignr}${offset -10}${color1}gpu${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color2}${execbar 8,100 cat /sys/class/drm/card0/device/gpu_busy_percent} ${color6}[${color2}${exec cat /sys/class/drm/card0/device/gpu_busy_percent}% (${exec cat /sys/class/drm/card0/device/mem_info_gtt_used | numfmt --to=iec-i --suffix=B}/${exec cat /sys/class/drm/card0/device/mem_info_gtt_total | numfmt --to=iec-i --suffix=B})${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color2}${execbar 8,100 nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits} ${color6}[${color2}${exec nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits}% (${exec nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits}MiB/${exec nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits}MiB)${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
+${alignr}${offset -10}${color1}amd${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}Radeon Vega Mobile (Renoir)${color6}]${color} ${color1}name${color} ${color6}─┤    │    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${exec cat /sys/class/drm/card0/device/mem_info_vram_used | awk '{printf "%.1f", $1/1073741824}'}${color}/${color2}${exec cat /sys/class/drm/card0/device/mem_info_vram_total | awk '{printf "%.1f", $1/1073741824}'}GB${color6}]${color} ${color1}vram${color} ${color6}─┤    │    │    │${color}
+${alignr}${offset -10}${color2}${execbar 7,100 cat /sys/class/drm/card0/device/gpu_busy_percent} ${color6}[${color2}${exec cat /sys/class/drm/card0/device/gpu_busy_percent}%${color6}]${color} ${color1}used${color} ${color6}─┘    │    │    │${color}
+${alignr}${offset -10}${color1}nvidia${color} ${color6}─┘    │    │${color}
+${alignr}${offset -10}${color6}[${color2}GeForce GTX 1650 Mobile${color6}]${color} ${color1}name${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color2}${exec nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | awk '{printf "%.1f", $1/1024}'}${color}/${color2}${exec nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk '{printf "%.1f", $1/1024}'}GB${color6}]${color} ${color1}vram${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color2}${execbar 7,100 nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits} ${color6}[${color2}${exec nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits}%${color6}]${color} ${color1}used${color} ${color6}─┘         │    │${color}
 ${alignr}${offset -10}${color1}ram${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color2}${membar 8,100} ${color6}[${color2}$memperc% ($mem/$memmax)${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top_mem name 1}${color} ${color2}${top_mem mem 1}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top_mem name 2}${color} ${color2}${top_mem mem 2}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top_mem name 3}${color} ${color2}${top_mem mem 3}${color6}]${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color1}${top_mem name 4}${color} ${color2}${top_mem mem 4}${color6}]${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
+${alignr}${offset -10}${color6}[${color2}$mem${color}/${color2}$memmax${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color2}${membar 7,100} ${color6}[${color2}$memperc%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color1}top${color} ${color6}─┘    │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top_mem name 1}${color} ${color2}${top_mem mem 1}${color6}]${color} ${color6}[${color1}${top_mem name 2}${color} ${color2}${top_mem mem 2}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top_mem name 3}${color} ${color2}${top_mem mem 3}${color6}]${color} ${color6}[${color1}${top_mem name 4}${color} ${color2}${top_mem mem 4}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top_mem name 5}${color} ${color2}${top_mem mem 5}${color6}]${color} ${color6}[${color1}${top_mem name 6}${color} ${color2}${top_mem mem 6}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top_mem name 7}${color} ${color2}${top_mem mem 7}${color6}]${color} ${color6}[${color1}${top_mem name 8}${color} ${color2}${top_mem mem 8}${color6}]${color} ${color6}─┤         │    │${color}
+${alignr}${offset -10}${color6}[${color1}${top_mem name 9}${color} ${color2}${top_mem mem 9}${color6}]${color} ${color6}[${color1}${top_mem name 10}${color} ${color2}${top_mem mem 10}${color6}]${color} ${color6}─┘         │    │${color}
 ${alignr}${offset -10}${color1}processes${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color2}$processes${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}$running_processes${color6}]${color} ${color1}running${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
 ${alignr}${offset -10}${color1}temperature${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color2}${exec sensors | grep "Tctl" | awk '{print $2}'}${color6}]${color} ${color1}cpu${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${exec sensors amdgpu-pci-0600 | grep "edge" | awk '{print $2}'}${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${exec nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk '{printf "%.1f", $1}'}c${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
 ${alignr}${offset -10}${color1}fan-speed${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec sensors | grep "cpu_fan" | awk '{print $2}'}${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
-${alignr}${offset -10}${color6}[${color2}${exec sensors | grep "gpu_fan" | awk '{print $2}'}${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
-${alignr}${offset -10}$font ${color6}│${color}
+${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "cpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
+${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "gpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
 ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}$diskio_read${color6}]${color} ${color1}read${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${color2}$diskio_write${color6}]${color} ${color1}write${color} ${color6}─┘    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
-${alignr}${offset -10}${color6}[${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color1}boot${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color2}${fs_bar 8,100 /boot/} ${color6}[${color2}${fs_used_perc /boot}%${color6}]${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
-${alignr}${offset -10}${color6}[${color2}$swapperc%${color}-${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color1}swap${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color2}${swapbar 8,100} ${color6}[${color2}$swapperc%${color6}]${color} ${color6}─┘    │    │${color}
-${alignr}${offset -10}$font ${color6}│    │${color}
-${alignr}${offset -10}${color6}[${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color1}root${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color2}${fs_bar 8,100 /} ${color6}[${color2}${fs_used_perc /}%${color6}]${color} ${color6}─┘         │${color}
-${alignr}${offset -10}$font ${color6}│${color}
-${alignr}${offset -10}${color1}${color} ${color6}└──────────────────────────┘${color}
-
-
+${alignr}${offset -10}${color6}[${color2}$diskio_read${color6}]${color} ${color1}read${color} ${color6}[${color2}$diskio_write${color6}]${color} ${color1}write${color} ${color6}─┤    │${color}
+${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
+${alignr}${offset -10}${color2}${fs_bar 7,120 /boot/}${color} ${color1}boot${color} ${color2}${fs_bar 7,135 /}${color} ${color1}root${color} ${color2}${swapbar 7,120}${color} ${color1}swap${color} ${color6}─┘    │${color}
+${alignr}${offset -10}${color6}└──────────────────────────┘${color}
