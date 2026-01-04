@@ -2,7 +2,7 @@ background yes
 use_xft yes
 xftfont monospace:pixelsize=13
 xftalpha 1
-update_interval 0.5
+update_interval 1
 total_run_times 0
 own_window yes
 own_window_type desktop
@@ -21,7 +21,7 @@ default_shade_color black
 default_outline_color white
 alignment top_right
 gap_x 10
-gap_y 30
+gap_y 20
 no_buffers yes
 cpu_avg_samples 2
 net_avg_samples 2
@@ -102,4 +102,4 @@ ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$diskio_read${color6}]${color} ${color1}read${color} ${color6}[${color2}$diskio_write${color6}]${color} ${color1}write${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color2}${fs_bar 7,120 /boot/}${color} ${color1}boot${color} ${color2}${fs_bar 7,135 /}${color} ${color1}root${color} ${color2}${swapbar 7,120}${color} ${color1}swap${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color6}└──────────────────────────┘${color}
+${alignr}${offset -10}${color6}└─────────────────────────────────────────────────────────────────────────────────┘${color}
