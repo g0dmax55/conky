@@ -1,55 +1,56 @@
-background yes
-use_xft yes
-xftfont monospace:pixelsize=11
-xftalpha 1
-update_interval 1.0
-total_run_times 0
-own_window yes
-own_window_type normal
-own_window_argb_visual yes
-own_window_transparent yes
-own_window_hints undecorated,below,sticky,skip_taskbar,skip_pager
-double_buffer yes
-draw_shades no
-draw_outline no
-draw_borders no
-draw_graph_borders yes
-stippled_borders 0
-border_inner_margin 6
-border_width 0
-default_color 999999
-default_shade_color black
-default_outline_color white
-alignment top_left
-gap_x 50
-gap_y 50
-no_buffers yes
-cpu_avg_samples 2
-net_avg_samples 2
-override_utf8_locale yes
-use_spacer none
-text_buffer_size 16000
-maximum_width 1200
-minimum_size 1200 0
+conky.config = {
+    background = true,
+    use_xft = true,
+    font = 'monospace:pixelsize=11',
+    xftalpha = 1,
+    update_interval = 1.0,
+    total_run_times = 0,
+    own_window = true,
+    own_window_type = 'normal',
+    own_window_argb_visual = true,
+    own_window_transparent = true,
+    own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    double_buffer = true,
+    draw_shades = false,
+    draw_outline = false,
+    draw_borders = false,
+    draw_graph_borders = true,
+    stippled_borders = 0,
+    border_inner_margin = 6,
+    border_width = 0,
+    default_color = '999999',
+    default_shade_color = 'black',
+    default_outline_color = 'white',
+    alignment = 'top_left',
+    gap_x = 50,
+    gap_y = 50,
+    no_buffers = true,
+    cpu_avg_samples = 2,
+    net_avg_samples = 2,
+    override_utf8_locale = true,
+    use_spacer = 'none',
+    text_buffer_size = 16000,
+    maximum_width = 1200,
+    minimum_width = 1200,
+    minimum_height = 0,
 
-# Custom Neon Palette
-color1 999999 
-# Grey (Labels/Brackets/Rest)
-color2 00FFFF 
-# Cyan (Numbers/Values/Bars)
-color6 FF0000 
-# Red (Tree Structure)
+    -- Custom Neon Palette
+    color1 = '999999', -- Grey (Labels/Brackets/Rest)
+    color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
+    color6 = 'FF0000', -- Red (Tree Structure)
+}
 
-TEXT
+conky.text = [[
 ${color6}┌╌╌╌╌╌╌╌╌╌${color1} Live Traffic Analysis ${color6}╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 990}┐${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '1p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '2p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '3p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '4p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '5p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '6p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '7p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '8p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '9p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '10p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '1p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '2p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '3p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '4p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '5p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '6p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '7p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '8p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '9p'}${goto 990}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '10p'}${goto 990}${color6}┊${color}
 ${color6}└╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 990}┘${color}
+]]
