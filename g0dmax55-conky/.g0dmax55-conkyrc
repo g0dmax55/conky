@@ -47,6 +47,7 @@ ${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} $
 ${alignr}${offset -10}${color6}[${color2}${execi 600 uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$machine${color6}]${color} ${color1}arch${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┘${color}
 ${alignr}${offset -10}${color6}│${color}
 ${alignr}${offset -10}${color1}system${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color1}cpu${color} ${color6}─┤    │${color}
