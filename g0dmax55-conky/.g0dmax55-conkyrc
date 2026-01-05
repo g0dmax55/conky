@@ -6,6 +6,7 @@ update_interval 1
 total_run_times 0
 own_window yes
 own_window_type desktop
+own_window_argb_visual yes
 own_window_transparent yes
 own_window_hints undecorated,below,sticky,skip_taskbar,skip_pager
 double_buffer yes
@@ -42,16 +43,16 @@ color6 FF0000
 
 TEXT
 ${alignr}${offset -10}${color6}┌──────────────────────────┐${color}
-${alignr}${offset -10}${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} ${color1}user${color} ${color6}─┬─┘${color}
-${alignr}${offset -10}${color6}[${color2}${execi 600 uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}$machine${color6}]${color} ${color1}arch${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${time %H:%M %d-%b-%y}${color6}]${color} ${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} ${color1}user${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 uname -r}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 awk -F'"' '/^NAME=/ {print $2}' /etc/os-release}${color6}]${color} ${color6}[${color2}$machine${color6}]${color} ${color1}os/arch${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}${execi 600 curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┘${color}
+${if_up wlan0}${alignr}${offset -10}${color6}[${color2}${wireless_essid wlan0}${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/wlan0/address}${color6}]${color} ${color6}[${color2}${addr wlan0}${color6}]${color} ${color6}[${color2}${execi 600 curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┤${color}${else}${alignr}${offset -10}${color6}[${color2}Wired Connection${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/eth0/address}${color6}]${color} ${color6}[${color2}${addr eth0}${color6}]${color} ${color6}[${color2}${execi 600 curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color6}[${color2}LINK${color6}]${color} ${color1}eth${color} ${color6}─┤${color}${endif}
 ${alignr}${offset -10}${color6}│${color}
 ${alignr}${offset -10}${color1}system${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color1}cpu${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${color2}${execi 600 cat /proc/cpuinfo | grep "model name" | head -1 | cut -d':' -f2 | cut -c 2-25}${color6}]${color} ${color1}name${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 cat /proc/cpuinfo | grep "model name" | head -1 | cut -d':' -f2 | sed 's/^[ \t]*//'}${color6}]${color} ${color1}name${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq_g}GHz${color6}]${color} ${color1}clock${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color2}${cpubar 7,100} ${color6}[${if_match ${cpu cpu0}>80}${color6}${else}${color2}${endif}${cpu cpu0}%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu1}%${color6}]${color} ${color1}C01${color} ${color6}[${color2}${cpu cpu2}%${color6}]${color} ${color1}C02${color} ${color6}[${color2}${cpu cpu3}%${color6}]${color} ${color1}C03${color} ${color6}[${color2}${cpu cpu4}%${color6}]${color} ${color1}C04${color} ${color6}─┤    │    │    │${color}
@@ -80,7 +81,7 @@ ${alignr}${offset -10}${color6}[${color2}GeForce GTX 1650 Mobile${color6}]${colo
 ${alignr}${offset -10}${color6}[${color2}${exec nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | awk '{printf "%.1f", $1/1024}'}${color}/${color2}${exec nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | awk '{printf "%.1f", $1/1024}'}GB${color6}]${color} ${color1}vram${color} ${color6}─┤         │    │${color}
 ${alignr}${offset -10}${color2}${execbar 7,100 nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits} ${color6}[${color2}${exec nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits}%${color6}]${color} ${color1}used${color} ${color6}─┘         │    │${color}
 ${alignr}${offset -10}${color1}ram${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${color2}$mem${color}/${color2}$memmax${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}$mem${color}/${color2}$memmax${color6}]${color} ${color6}[${color2}${execi 2 sensors jc42-i2c-2-18 | grep "temp1" | awk '{print $2}' | tr -d '+'}${color}°C${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color2}${membar 7,100} ${color6}[${if_match $memperc>80}${color6}${else}${color2}${endif}$memperc%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color1}top${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color6}[${color1}${top_mem name 1}${color} ${color2}${top_mem mem 1}${color6}]${color} ${color6}[${color1}${top_mem name 2}${color} ${color2}${top_mem mem 2}${color6}]${color} ${color6}─┤         │    │${color}
@@ -92,14 +93,14 @@ ${alignr}${offset -10}${color1}processes${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color2}$processes${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}$running_processes${color6}]${color} ${color1}running${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color1}temperature${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${if_match ${execi 2 sensors | grep "Tctl" | awk '{print $2}' | tr -d '+°C'} > 80}${color6}${else}${color2}${endif}${execi 2 sensors | grep "Tctl" | awk '{print $2}'}${color6}]${color} ${color1}cpu${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color2}${execi 2 sensors amdgpu-pci-0600 | grep "edge" | awk '{print $2}'}${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${if_match ${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits} > 80}${color6}${else}${color2}${endif}${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk '{printf "%.1f", $1}'}c${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
+${alignr}${offset -10}${color6}[${if_match ${execi 2 sensors | grep "Tctl" | awk '{print $2}' | tr -d '+°C'} > 80}${color6}${else}${color2}${endif}${execi 2 sensors | grep "Tctl" | awk '{print $2}' | tr -d '+'}${color}°C${color6}]${color} ${color1}cpu${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${execi 2 sensors amdgpu-pci-0600 | grep "edge" | awk '{print $2}' | tr -d '+'}${color}°C${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${if_match ${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits} > 80}${color6}${else}${color2}${endif}${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk '{printf "%.1f", $1}'}${color}°C${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color1}fan-speed${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "cpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
-${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "gpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
+${alignr}${offset -10}${color2}${execbar 7,100 sensors -u asus-isa-000a | awk '/fan1_input/ {print int($2*100/6800)}'} ${color6}[${color2}${execi 2 sensors -u asus-isa-000a | awk '/fan1_input/ {printf "%d", $2}'}${color} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
+${alignr}${offset -10}${color2}${execbar 7,100 sensors -u asus-isa-000a | awk '/fan2_input/ {print int($2*100/6800)}'} ${color6}[${color2}${execi 2 sensors -u asus-isa-000a | awk '/fan2_input/ {printf "%d", $2}'}${color} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
 ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}$diskio_read${color6}]${color} ${color1}read${color} ${color6}[${color2}$diskio_write${color6}]${color} ${color1}write${color} ${color6}─┤    │${color}
+${alignr}${offset -10}${color6}[${color1}r${color} ${color2}$diskio_read${color6}]${color} ${color6}[${color1}w${color} ${color2}$diskio_write${color6}]${color} ${color6}[${color1}Int${color} ${color2}${execi 2 sensors nvme-pci-0400 | grep "Composite" | awk '{print $2}' | tr -d '+'}${color}°C/${color1}WD${color} ${color2}${execi 2 sensors nvme-pci-0500 | grep "Composite" | awk '{print $2}' | tr -d '+'}${color}°C${color6}]${color} ${color1}nvme${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color2}${fs_bar 7,120 /boot/}${color} ${color1}boot${color} ${color2}${fs_bar 7,135 /}${color} ${color1}root${color} ${color2}${swapbar 7,120}${color} ${color1}swap${color} ${color6}─┘    │${color}
 ${alignr}${offset -10}${color6}└─────────────────────────────────────────────────────────────────────────────────┘${color}

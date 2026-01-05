@@ -21,8 +21,8 @@ default_color 999999
 default_shade_color black
 default_outline_color white
 alignment top_right
-gap_x 320
-gap_y 795
+gap_x 370
+gap_y 810
 no_buffers yes
 cpu_avg_samples 2
 net_avg_samples 2
@@ -42,8 +42,8 @@ TEXT
 ${voffset 5}
 ${alignr}${color1}DOWNLOAD${color}
 ${alignr}${color6}[${color2}${downspeed wlan0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totaldown wlan0}${color6}]${color} ${color1}total${color}
-${downspeedgraph wlan0 40,300 440000 FF0000 -l -t}
+${downspeedgraph wlan0 35,300 440000 FF0000 -l -t}
 ${voffset 3}
 ${alignr}${color1}UPLOAD${color}
 ${alignr}${color6}[${color2}${upspeed wlan0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totalup wlan0}${color6}]${color} ${color1}total${color}
-${upspeedgraph wlan0 40,300 440000 FF0000 -l -t}
+${upspeedgraph wlan0 35,300 440000 FF0000 -l -t}
