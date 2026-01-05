@@ -22,7 +22,7 @@ trap cleanup SIGINT SIGTERM
 MAX_LEN=140
 
 # Capture all traffic with DNS details
-tshark -i "$IFACE" -l -t ad -T fields \
+tshark -i "$IFACE" -l -t ad -T fields -E separator='|' \
     -e frame.time \
     -e ip.src \
     -e ip.dst \
@@ -33,7 +33,7 @@ tshark -i "$IFACE" -l -t ad -T fields \
     -e dns.a \
     -e _ws.col.Info \
     2>/dev/null | \
-while IFS=$'\t' read -r timestamp src dst proto dns_name qry_type is_response dns_ip info; do
+while IFS='|' read -r timestamp src dst proto dns_name qry_type is_response dns_ip info; do
     # Skip empty source
     [ -z "$src" ] && continue
     
@@ -51,13 +51,14 @@ while IFS=$'\t' read -r timestamp src dst proto dns_name qry_type is_response dn
             *) type_name="DNS" ;;
         esac
         
-        if [ "$is_response" = "1" ] && [ -n "$dns_ip" ]; then
-            line=$(printf "[%s] %-15s [%-5s] %s => %s" "$time_part" "$src" "$type_name" "$dns_name" "$dns_ip")
-        elif [ "$is_response" = "1" ]; then
-            line=$(printf "[%s] %-15s [%-5s] %s (OK)" "$time_part" "$src" "$type_name" "$dns_name")
+        # DNS packet - show Source -> Destination + DNS details
+        if [ "$is_response" = "1" ]; then
+            dns_info="Res: $dns_name"
+            [ -n "$dns_ip" ] && dns_info="$dns_info -> $dns_ip"
         else
-            line=$(printf "[%s] %-15s [%-5s] %s ?" "$time_part" "$src" "$type_name" "$dns_name")
+            dns_info="Qry: $dns_name"
         fi
+        line=$(printf "[%s] %-15s -> %-15s [%-5s] %s" "$time_part" "$src" "$dst" "DNS:$type_name" "$dns_info")
     else
         # Other packet - show protocol and brief info
         # Compress info
