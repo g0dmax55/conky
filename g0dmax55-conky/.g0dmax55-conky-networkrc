@@ -22,7 +22,7 @@ default_shade_color black
 default_outline_color white
 alignment top_right
 gap_x 320
-gap_y 805
+gap_y 795
 no_buffers yes
 cpu_avg_samples 2
 net_avg_samples 2
