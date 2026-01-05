@@ -29,8 +29,8 @@ net_avg_samples 2
 override_utf8_locale yes
 use_spacer none
 text_buffer_size 16000
-maximum_width 700
-minimum_size 700 0
+maximum_width 900
+minimum_size 900 0
 
 # Custom Neon Palette
 color1 999999 
@@ -41,10 +41,15 @@ color6 FF0000
 # Red (Tree Structure)
 
 TEXT
-${color6}┌─────────${color1} Live Traffic Analysis ${color6}────────────────────────────────${alignr}─┐${color}
+${color6}┌─────────${color1} Live Traffic Analysis ${color6}───────────────────────────────────────────────────────────────────${alignr}─┐${color}
 ${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '1p'}${alignr}│${color}
 ${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '2p'}${alignr}│${color}
 ${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '3p'}${alignr}│${color}
 ${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '4p'}${alignr}│${color}
 ${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '5p'}${alignr}│${color}
-${color6}└─────────────────────────────────────────────────────────────────${alignr}─┘${color}
+${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '6p'}${alignr}│${color}
+${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '7p'}${alignr}│${color}
+${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '8p'}${alignr}│${color}
+${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '9p'}${alignr}│${color}
+${color6}│ ${color2}${execi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/traffic.sh | sed -n '10p'}${alignr}│${color}
+${color6}└────────────────────────────────────────────────────────────────────${alignr}─┘${color}
