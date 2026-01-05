@@ -2,7 +2,7 @@
 # Reads the tail of the live traffic log
 # Adds color codes that Conky will parse
 
-LOG_FILE="/tmp/conky_traffic.log"
+LOG_FILE="/tmp/conky_display.log"
 FIXED_WIDTH=140
 
 # Ensure the log exists and has content
