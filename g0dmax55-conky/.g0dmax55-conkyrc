@@ -43,17 +43,16 @@ color6 FF0000
 TEXT
 ${alignr}${offset -10}${color6}┌──────────────────────────┐${color}
 ${alignr}${offset -10}${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}${exec whoami}${color6}]${color} ${color1}user${color} ${color6}─┬─┘${color}
-${alignr}${offset -10}${color6}[${color2}${exec uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} ${color1}user${color} ${color6}─┬─┘${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 uname -r | cut -c 1-14}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$machine${color6}]${color} ${color1}arch${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color2}${exec curl -s --max-time 3 ifconfig.me 2>/dev/null | head -1 || echo "..."}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┘${color}
 ${alignr}${offset -10}${color6}│${color}
 ${alignr}${offset -10}${color1}system${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color1}cpu${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec cat /proc/cpuinfo | grep "model name" | head -1 | cut -d':' -f2 | cut -c 2-25}${color6}]${color} ${color1}name${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${execi 600 cat /proc/cpuinfo | grep "model name" | head -1 | cut -d':' -f2 | cut -c 2-25}${color6}]${color} ${color1}name${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${freq_g}GHz${color6}]${color} ${color1}clock${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color2}${cpubar 7,100} ${color6}[${color2}${cpu cpu0}%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color2}${cpubar 7,100} ${color6}[${if_match ${cpu cpu0}>80}${color6}${else}${color2}${endif}${cpu cpu0}%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu1}%${color6}]${color} ${color1}C01${color} ${color6}[${color2}${cpu cpu2}%${color6}]${color} ${color1}C02${color} ${color6}[${color2}${cpu cpu3}%${color6}]${color} ${color1}C03${color} ${color6}[${color2}${cpu cpu4}%${color6}]${color} ${color1}C04${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu5}%${color6}]${color} ${color1}C05${color} ${color6}[${color2}${cpu cpu6}%${color6}]${color} ${color1}C06${color} ${color6}[${color2}${cpu cpu7}%${color6}]${color} ${color1}C07${color} ${color6}[${color2}${cpu cpu8}%${color6}]${color} ${color1}C08${color} ${color6}─┤    │    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${cpu cpu9}%${color6}]${color} ${color1}C09${color} ${color6}[${color2}${cpu cpu10}%${color6}]${color} ${color1}C10${color} ${color6}[${color2}${cpu cpu11}%${color6}]${color} ${color1}C11${color} ${color6}[${color2}${cpu cpu12}%${color6}]${color} ${color1}C12${color} ${color6}─┤    │    │    │${color}
@@ -81,7 +80,7 @@ ${alignr}${offset -10}${color6}[${color2}${exec nvidia-smi --query-gpu=memory.us
 ${alignr}${offset -10}${color2}${execbar 7,100 nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits} ${color6}[${color2}${exec nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits}%${color6}]${color} ${color1}used${color} ${color6}─┘         │    │${color}
 ${alignr}${offset -10}${color1}ram${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color2}$mem${color}/${color2}$memmax${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color2}${membar 7,100} ${color6}[${color2}$memperc%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color2}${membar 7,100} ${color6}[${if_match $memperc>80}${color6}${else}${color2}${endif}$memperc%${color6}]${color} ${color1}used${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color1}top${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color6}[${color1}${top_mem name 1}${color} ${color2}${top_mem mem 1}${color6}]${color} ${color6}[${color1}${top_mem name 2}${color} ${color2}${top_mem mem 2}${color6}]${color} ${color6}─┤         │    │${color}
 ${alignr}${offset -10}${color6}[${color1}${top_mem name 3}${color} ${color2}${top_mem mem 3}${color6}]${color} ${color6}[${color1}${top_mem name 4}${color} ${color2}${top_mem mem 4}${color6}]${color} ${color6}─┤         │    │${color}
@@ -92,9 +91,9 @@ ${alignr}${offset -10}${color1}processes${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color2}$processes${color6}]${color} ${color1}total${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}$running_processes${color6}]${color} ${color1}running${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color1}temperature${color} ${color6}─┤    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec sensors | grep "Tctl" | awk '{print $2}'}${color6}]${color} ${color1}cpu${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec sensors amdgpu-pci-0600 | grep "edge" | awk '{print $2}'}${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk '{printf "%.1f", $1}'}c${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
+${alignr}${offset -10}${color6}[${if_match ${execi 2 sensors | grep "Tctl" | awk '{print $2}' | tr -d '+°C'} > 80}${color6}${else}${color2}${endif}${execi 2 sensors | grep "Tctl" | awk '{print $2}'}${color6}]${color} ${color1}cpu${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${execi 2 sensors amdgpu-pci-0600 | grep "edge" | awk '{print $2}'}${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
+${alignr}${offset -10}${color6}[${if_match ${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits} > 80}${color6}${else}${color2}${endif}${execi 2 nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits | awk '{printf "%.1f", $1}'}c${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color1}fan-speed${color} ${color6}─┘    │${color}
 ${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "cpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
 ${alignr}${offset -10}${color2}⚙${color} ${color6}[${color2}${exec sensors | grep "gpu_fan" | awk '{print $2}'}${color} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
