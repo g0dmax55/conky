@@ -1,35 +1,43 @@
 #!/bin/bash
-# Captures live packets using tshark
-# Priorities: DNS Queries, then HTTP/HTTPS, then others.
+# Reads the tail of the live traffic log
+# Adds color codes that Conky will parse
 
-# Check which interface is up
-IFACE="wlan0"
-if [ ! -d "/sys/class/net/wlan0" ] || [ "$(cat /sys/class/net/wlan0/operstate)" != "up" ]; then
-    IFACE="eth0"
+LOG_FILE="/tmp/conky_traffic.log"
+FIXED_WIDTH=140
+
+# Ensure the log exists and has content
+if [ ! -f "$LOG_FILE" ] || [ ! -s "$LOG_FILE" ]; then
+    printf "\${color1}▸ %-${FIXED_WIDTH}s" "Waiting for packets..."
+    exit
 fi
 
-# Capture packets
-# We capture: IP Src, Proto, DNS Query Name, Info
-tshark -i $IFACE -c 15 -a duration:1 -T fields -e ip.src -e _ws.col.Protocol -e dns.qry.name -e _ws.col.Info 2>/dev/null | head -n 10 | awk -F'\t' '{
-    src=$1
-    proto=$2
-    dns_query=$3
-    info=$4
+# Get last 10 non-empty lines
+line_num=0
+tail -n 10 "$LOG_FILE" | grep -v '^$' | tac | while read -r line; do
+    [ -z "$line" ] && continue
     
-    if (src == "") next
-
-    # If it is a DNS query, show the domain nicely
-    if (dns_query != "") {
-        # Truncate if too long
-        if (length(dns_query) > 35) dns_query = substr(dns_query, 1, 32) "..."
-        printf "%-15s [DNS] %s\n", src, dns_query
-    } 
-    else {
-        # For non-DNS, show Proto and Info (truncated)
-        if (length(info) > 40) info = substr(info, 1, 37) "..."
-        printf "%-15s [%s] %s\n", src, proto, info
-    }
-}'
-
-# Fill empty lines
-# (Conky handles this usually, but safe to keep script consistent)
+    # Compress whitespace
+    line=$(echo "$line" | tr -s ' ')
+    
+    # Truncate to max width
+    if [ ${#line} -gt $FIXED_WIDTH ]; then
+        line="${line:0:$((FIXED_WIDTH-3))}..."
+    fi
+    
+    # Pad to exact width FIRST
+    padded=$(printf "%-${FIXED_WIDTH}s" "$line")
+    
+    # Now add colors to the padded string
+    colored=$(echo "$padded" | sed \
+        -e 's/\[/\${color6}[/g' \
+        -e 's/\]/]\${color2}/g' \
+        -e 's/ -> / \${color1}->\${color2} /g')
+    
+    # Output with arrow
+    if [ $line_num -eq 0 ]; then
+        echo "\${color2}▶ $colored"
+    else
+        echo "\${color1}▷\${color2} $colored"
+    fi
+    ((line_num++))
+done | tac
