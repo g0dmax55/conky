@@ -1,7 +1,6 @@
 #!/bin/bash
 # Captures live packets using tshark
-# Format: Source -> Destination [Protocol] Info
-# Captures ALL traffic (DNS, TCP, UDP, etc.)
+# Priorities: DNS Queries, then HTTP/HTTPS, then others.
 
 # Check which interface is up
 IFACE="wlan0"
@@ -9,30 +8,28 @@ if [ ! -d "/sys/class/net/wlan0" ] || [ "$(cat /sys/class/net/wlan0/operstate)" 
     IFACE="eth0"
 fi
 
-# Run tshark capture
-# -i: interface
-# -c: stop after 5 packets
-# -a duration:1 : stop after 1 second
-# -f "": No capture filter (capture everything)
-# -T fields ... : Output specific fields
-# 2>/dev/null to hide capture stderr info
-
-# Note: We output Src, Dst, Proto, and Info (Info gives details like "Standard Query A google.com")
-tshark -i $IFACE -c 5 -a duration:1 -T fields -e ip.src -e ip.dst -e _ws.col.Protocol -e _ws.col.Info 2>/dev/null | head -n 5 | awk -F'\t' '{
+# Capture packets
+# We capture: IP Src, Proto, DNS Query Name, Info
+tshark -i $IFACE -c 15 -a duration:1 -T fields -e ip.src -e _ws.col.Protocol -e dns.qry.name -e _ws.col.Info 2>/dev/null | head -n 10 | awk -F'\t' '{
     src=$1
-    dst=$2
-    proto=$3
+    proto=$2
+    dns_query=$3
     info=$4
     
-    # Skip empty lines
     if (src == "") next
-    
-    # Truncate Info if too long
-    if (length(info) > 30) info = substr(info, 1, 27) "..."
 
-    printf "%-13s -> %-13s [%s] %s\n", src, dst, proto, info
+    # If it is a DNS query, show the domain nicely
+    if (dns_query != "") {
+        # Truncate if too long
+        if (length(dns_query) > 35) dns_query = substr(dns_query, 1, 32) "..."
+        printf "%-15s [DNS] %s\n", src, dns_query
+    } 
+    else {
+        # For non-DNS, show Proto and Info (truncated)
+        if (length(info) > 40) info = substr(info, 1, 37) "..."
+        printf "%-15s [%s] %s\n", src, proto, info
+    }
 }'
 
-# Fill empty lines if no traffic captured
-# We simply count lines output so far to pad
-# This is handled by Conky usually, but good for testing
+# Fill empty lines
+# (Conky handles this usually, but safe to keep script consistent)
