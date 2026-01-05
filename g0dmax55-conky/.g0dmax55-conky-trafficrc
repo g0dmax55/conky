@@ -1,9 +1,9 @@
 conky.config = {
     background = true,
     use_xft = true,
-    font = 'monospace:pixelsize=11',
+    font = 'monospace:pixelsize=12',
     xftalpha = 1,
-    update_interval = 1.0,
+    update_interval = 0.5,
     total_run_times = 0,
     own_window = true,
     own_window_type = 'normal',
@@ -41,16 +41,16 @@ conky.config = {
 }
 
 conky.text = [[
-${color6}┌╌╌╌╌╌╌╌╌╌${color1} Live Traffic Analysis ${color6}╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 990}┐${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '1p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '2p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '3p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '4p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '5p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '6p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '7p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '8p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '9p'}${goto 990}${color6}┊${color}
-${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '10p'}${goto 990}${color6}┊${color}
-${color6}└╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 990}┘${color}
+${color6}┌╌╌╌╌╌╌╌╌╌${color1} Live Traffic Analysis ${color6}╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 810}┐${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '1p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '2p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '3p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '4p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '5p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '6p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '7p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '8p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '9p'}${goto 810}${color6}┊${color}
+${color6}┊${color2}${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/traffic.sh | sed -n '10p'}${goto 810}${color6}┊${color}
+${color6}└╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌${goto 810}┘${color}
 ]]
