@@ -41,6 +41,7 @@ conky.config = {
     color1 = '999999', -- Grey (Labels/Brackets/Rest)
     color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
     color6 = 'FF0000', -- Red (Tree Structure)
+    lua_load = '/home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/fan_bar.lua',
 }
 
 conky.text = [[
@@ -99,8 +100,8 @@ ${alignr}${offset -10}${color6}[${if_match ${hwmon k10temp temp 1} > 80}${color6
 ${alignr}${offset -10}${color6}[${color2}${hwmon amdgpu temp 1}°C${color6}]${color} ${color1}amd${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${if_match ${nvidia temp} > 80}${color6}${else}${color2}${endif}${nvidia temp}°C${color6}]${color} ${color1}nvidia${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color1}fan-speed${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color2}${execbar 7,100 sensors -u asus-isa-000a | awk '/fan1_input/ {print int($2*100/6800)}'} ${color6}[${color2}${hwmon asus fan 1} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
-${alignr}${offset -10}${color2}${execbar 7,100 sensors -u asus-isa-000a | awk '/fan2_input/ {print int($2*100/6800)}'} ${color6}[${color2}${hwmon asus fan 2} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
+${alignr}${offset -10}${color2}${lua_bar 7,100 conky_fan_percent_1} ${color6}[${color2}${hwmon asus fan 1} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
+${alignr}${offset -10}${color2}${lua_bar 7,100 conky_fan_percent_2} ${color6}[${color2}${hwmon asus fan 2} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
 ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color1}r${color} ${color2}$diskio_read${color6}]${color} ${color6}[${color1}w${color} ${color2}$diskio_write${color6}]${color} ${color6}[${color1}Int${color} ${color2}${hwmon 2 temp 1}°C${color}/${color1}WD${color} ${color2}${hwmon 3 temp 1}°C${color6}]${color} ${color1}nvme${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
