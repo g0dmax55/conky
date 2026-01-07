@@ -28,8 +28,8 @@ conky.config = {
     override_utf8_locale = true,
     use_spacer = 'none',
     text_buffer_size = 32768,
-    maximum_width = 1000,
-    minimum_width = 1000,
+    maximum_width = 1100,
+    minimum_width = 1100,
     minimum_height = 1200,
 
     -- Custom Neon Palette
