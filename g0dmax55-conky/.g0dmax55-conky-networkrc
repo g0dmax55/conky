@@ -13,6 +13,7 @@ conky.config = {
     own_window_argb_value = 0,
     own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
     double_buffer = true,
+    imlib_cache_size = 0,
     draw_shades = false,
     draw_outline = false,
     draw_borders = false,

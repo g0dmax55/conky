@@ -6,13 +6,14 @@ conky.config = {
     update_interval = 1,
     total_run_times = 0,
     own_window = true,
-    own_window_type = 'normal',
+    own_window_type = 'desktop',
     own_window_class = 'Conky',
     own_window_argb_visual = true,
-    own_window_transparent = false,
+    own_window_transparent = true,
     own_window_argb_value = 0,
     own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
     double_buffer = true,
+    imlib_cache_size = 0,
     draw_shades = false,
     draw_outline = false,
     draw_borders = false,
@@ -41,7 +42,7 @@ conky.config = {
     color1 = '999999', -- Grey (Labels/Brackets/Rest)
     color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
     color6 = 'FF0000', -- Red (Tree Structure)
-    lua_load = '/home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/fan_bar.lua',
+    lua_load = '/home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/fan_bar.lua /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/amd_gpu.lua',
 }
 
 conky.text = [[
@@ -77,8 +78,8 @@ ${alignr}${offset -10}${color6}[${color1}${top name 9}${color} ${color2}${top cp
 ${alignr}${offset -10}${color1}gpu${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color1}amd${color} ${color6}─┤    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}Radeon Vega Mobile (Renoir)${color6}]${color} ${color1}name${color} ${color6}─┤    │    │    │${color}
-${alignr}${offset -10}${color6}[${color2}${exec cat /sys/class/drm/card0/device/mem_info_vram_used | awk '{printf "%.0f", $1/1048576}'}${color}/${color2}${exec cat /sys/class/drm/card0/device/mem_info_vram_total | awk '{printf "%.0f", $1/1048576}'}MB${color6}]${color} ${color1}vram${color} ${color6}─┤    │    │    │${color}
-${alignr}${offset -10}${color2}${execbar 7,100 cat /sys/class/drm/card0/device/gpu_busy_percent} ${color6}[${color2}${exec cat /sys/class/drm/card0/device/gpu_busy_percent}%${color6}]${color} ${color1}used${color} ${color6}─┘    │    │    │${color}
+${alignr}${offset -10}${color6}[${color2}${lua conky_amd_vram_used}${color}/${color2}${lua conky_amd_vram_total}MB${color6}]${color} ${color1}vram${color} ${color6}─┤    │    │    │${color}
+${alignr}${offset -10}${color2}${lua_bar 7,100 conky_amd_gpu_percent} ${color6}[${color2}${lua conky_amd_gpu_percent}%${color6}]${color} ${color1}used${color} ${color6}─┘    │    │    │${color}
 ${alignr}${offset -10}${color1}nvidia${color} ${color6}─┘    │    │${color}
 ${alignr}${offset -10}${color6}[${color2}GeForce GTX 1650 Mobile${color6}]${color} ${color1}name${color} ${color6}─┤         │    │${color}
 ${alignr}${offset -10}${color6}[${color2}${nvidia memused}${color}/${color2}${nvidia memmax}MB${color6}]${color} ${color1}vram${color} ${color6}─┤         │    │${color}

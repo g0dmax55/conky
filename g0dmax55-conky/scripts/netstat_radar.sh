@@ -34,10 +34,12 @@ output_fixed_lines() {
     done
 }
 
-# 1. STATISTICS
+# 1. STATISTICS (optimized: single netstat call, cached)
 echo "${C6}├─${CR} ${C6}[${C2}STATISTICS${C6}]${CR}"
-TCP_EST=$(netstat -tn 2>/dev/null | grep -c ESTABLISHED)
-TCP_WAIT=$(netstat -tn 2>/dev/null | grep -c TIME_WAIT)
+# Cache netstat output to avoid multiple calls
+NETSTAT_TN=$(netstat -tn 2>/dev/null)
+TCP_EST=$(echo "$NETSTAT_TN" | grep -c ESTABLISHED)
+TCP_WAIT=$(echo "$NETSTAT_TN" | grep -c TIME_WAIT)
 TCP_LISTEN=$(netstat -tln 2>/dev/null | tail -n +3 | wc -l)
 UDP_TOTAL=$(netstat -un 2>/dev/null | tail -n +3 | wc -l)
 echo "${C6}│  ├─${CR} ${C1}est:${C6}[${C2}${TCP_EST}${C6}]${CR} ${C1}wait:${C6}[${C2}${TCP_WAIT}${C6}]${CR} ${C1}listen:${C6}[${C2}${TCP_LISTEN}${C6}]${CR} ${C1}udp:${C6}[${C2}${UDP_TOTAL}${C6}]${CR}"
