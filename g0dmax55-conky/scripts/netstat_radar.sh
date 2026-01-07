@@ -55,11 +55,11 @@ echo "${C6}│${CR}"
 
 # 3. ACTIVE_CONNECTIONS
 echo "${C6}├─${CR} ${C6}[${C2}ACTIVE_CONNECTIONS${C6}]${CR}"
-printf "${C6}│  ├─${CR} ${C1}%-6s %-5s %-5s %-27s %-60s %s${CR}\n" "Proto" "R-Q" "S-Q" "Local Address" "Foreign Address" "State"
+printf "${C6}│  ├─${CR} ${C1}%-6s %-5s %-5s %-27s %-52s %s${CR}\n" "Proto" "R-Q" "S-Q" "Local Address" "Foreign Address" "State"
 # TCP connections - process and pad to exactly TCP_SLOTS lines
 netstat -Wt 2>/dev/null | tail -n +3 | tail -n $TCP_SLOTS | while read proto recvq sendq local foreign state; do
     [ -z "$proto" ] && continue
-    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C2}%-58s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
+    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25.25s${C6}]${CR} ${C6}[${C2}%-50.50s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
         "$proto" "$recvq" "$sendq" "$local" "$foreign" "$state"
 done | output_fixed_lines $TCP_SLOTS
 echo "${C6}│${CR}"
