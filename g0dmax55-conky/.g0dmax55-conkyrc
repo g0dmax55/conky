@@ -22,7 +22,7 @@ conky.config = {
     default_shade_color = 'black',
     default_outline_color = 'white',
     alignment = 'top_right',
-    gap_x = 10,
+    gap_x = 1,
     gap_y = 20,
     no_buffers = true,
     cpu_avg_samples = 2,
@@ -41,7 +41,7 @@ conky.config = {
 }
 
 conky.text = [[
-${alignr}${offset -10}${color6}┌──────────────────────────┐${color}
+${alignr}${offset -10}${color6}${color}
 ${alignr}${offset -10}${color6}[${color2}${time %H:%M %d-%b-%y}${color6}]${color} ${color6}[${color2}${nodename}${color6}]${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} ${color1}user${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}${execi 600 uname -r}${color6}]${color} ${color1}kernel${color} ${color6}─┤${color}
@@ -102,5 +102,5 @@ ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color1}r${color} ${color2}$diskio_read${color6}]${color} ${color6}[${color1}w${color} ${color2}$diskio_write${color6}]${color} ${color6}[${color1}Int${color} ${color2}${execi 2 sensors nvme-pci-0400 | grep "Composite" | awk '{print $2}' | tr -d '+'}${color}°C/${color1}WD${color} ${color2}${execi 2 sensors nvme-pci-0500 | grep "Composite" | awk '{print $2}' | tr -d '+'}${color}°C${color6}]${color} ${color1}nvme${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color2}${fs_bar 7,120 /boot/}${color} ${color1}boot${color} ${color2}${fs_bar 7,135 /}${color} ${color1}root${color} ${color2}${swapbar 7,120}${color} ${color1}swap${color} ${color6}─┘    │${color}
-${alignr}${offset -10}${color6}└─────────────────────────────────────────────────────────────────────────────────┘${color}
+${alignr}${offset -10}${color6}─┘${color}
 ]]
