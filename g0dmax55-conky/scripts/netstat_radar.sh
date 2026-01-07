@@ -55,35 +55,40 @@ echo "${C6}│${CR}"
 
 # 3. ACTIVE_CONNECTIONS
 echo "${C6}├─${CR} ${C6}[${C2}ACTIVE_CONNECTIONS${C6}]${CR}"
-echo "${C6}│       ${C1}Proto   R-Q  S-Q  Local Address              Foreign Address            State${CR}"
+printf "${C6}│  ├─${CR} ${C1}%-6s %-5s %-5s %-27s %-27s %s${CR}\n" "Proto" "R-Q" "S-Q" "Local Address" "Foreign Address" "State"
 # TCP connections - process and pad to exactly TCP_SLOTS lines
 netstat -tn 2>/dev/null | tail -n +3 | tail -n $TCP_SLOTS | while read proto recvq sendq local foreign state; do
     [ -z "$proto" ] && continue
-    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C1}%s${CR}\n" \
+    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
         "$proto" "$recvq" "$sendq" "$local" "$foreign" "$state"
 done | output_fixed_lines $TCP_SLOTS
 echo "${C6}│${CR}"
 
 # 4. UDP_CONNECTIONS
 echo "${C6}├─${CR} ${C6}[${C2}UDP_CONNECTIONS${C6}]${CR}"
-echo "${C6}│       ${C1}Proto   R-Q  S-Q  Local Address              Foreign Address            State${CR}"
+printf "${C6}│  ├─${CR} ${C1}%-6s %-5s %-5s %-27s %-27s %s${CR}\n" "Proto" "R-Q" "S-Q" "Local Address" "Foreign Address" "State"
 # UDP connections
 netstat -un 2>/dev/null | tail -n +3 | tail -n $UDP_SLOTS | while read proto recvq sendq local foreign state; do
     [ -z "$proto" ] && continue
-    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C1}%s${CR}\n" \
+    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%3s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
         "$proto" "$recvq" "$sendq" "$local" "$foreign" "${state:-ESTABLISHED}"
 done | output_fixed_lines $UDP_SLOTS
 echo "${C6}│${CR}"
 
 # 5. LISTENING_PORTS
 echo "${C6}├─${CR} ${C6}[${C2}LISTENING_PORTS${C6}]${CR}"
-echo "${C6}│       ${C1}Local Address              Program${CR}"
+printf "${C6}│  ├─${CR} ${C1}%-6s %-7s %-17s %s${CR}\n" "Proto" "Port" "Address" "Program"
 # Listening sockets - use ss for full program names
 ss -tlnp 2>/dev/null | tail -n +2 | tail -n $LISTEN_SLOTS | while read state recvq sendq local peer process; do
     [ -z "$state" ] && continue
+    # Extract port and address
+    port=$(echo "$local" | rev | cut -d: -f1 | rev)
+    addr=$(echo "$local" | rev | cut -d: -f2- | rev)
+    [ "$addr" = "*" ] && addr="0.0.0.0"
+    [ "$addr" = "[::]" ] && addr="::"
     prog=$(echo "$process" | sed -n 's/.*users:(("\([^"]*\)".*/\1/p')
     [ -z "$prog" ] && prog="-"
-    printf "${C6}│  ├─${CR} ${C6}[${C2}%-25s${C6}]${CR} ${C1}%s${CR}\n" "$local" "$prog"
+    printf "${C6}│  ├─${CR} ${C6}[${C2}%-4s${C6}]${CR} ${C6}[${C2}%5s${C6}]${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" "tcp" "$port" "$addr" "$prog"
 done | output_fixed_lines $LISTEN_SLOTS
 
 echo "${C6}└─${CR}"

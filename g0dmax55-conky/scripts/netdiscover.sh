@@ -51,8 +51,7 @@ SUBNET=$(ip -o -f inet addr show $IFACE 2>/dev/null | awk '{print $4}')
 
 # Header
 echo "${C6}├─${CR} ${C6}[${C2}LAN_DISCOVERY${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${IFACE}${C6}]${CR} ${C6}[${C2}${SUBNET:-Unconfigured}${C6}]${CR}"
-echo "${C6}│${CR}"
-echo "${C6}│  ${C1}IP Address       MAC Address        Vendor${CR}"
+printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Address" "Vendor"
 
 # Try arp-scan first (faster, also needs sudo but can be set NOPASSWD)
 # Fall back to arp cache with MAC vendor lookup
@@ -62,7 +61,7 @@ echo "${C6}│  ${C1}IP Address       MAC Address        Vendor${CR}"
         sudo arp-scan -l -I "$IFACE" --oui=/usr/share/arp-scan/ieee-oui.txt 2>/dev/null | grep -E '^[0-9]+\.' | head -n $DEVICE_SLOTS | while read ip mac vendor; do
             [ -z "$ip" ] && continue
             vendor=${vendor:-"Unknown"}
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C1}%s${CR}\n" \
+            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
                 "$ip" "$mac" "$vendor"
         done
     else
@@ -77,7 +76,7 @@ echo "${C6}│  ${C1}IP Address       MAC Address        Vendor${CR}"
             vendor=$(grep -i "^${mac:0:8}" /usr/share/arp-scan/ieee-oui.txt 2>/dev/null | cut -f2 || echo "-")
             [ -z "$vendor" ] && vendor="-"
             
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C1}%s${CR}\n" \
+            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%s${C6}]${CR}\n" \
                 "$ip" "$mac" "$vendor"
         done
     fi
