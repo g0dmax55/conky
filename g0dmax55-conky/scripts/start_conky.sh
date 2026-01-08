@@ -5,6 +5,7 @@
 killall conky 2>/dev/null
 pkill -f netstat_radar.sh 2>/dev/null
 pkill -f netdiscover.sh 2>/dev/null
+pkill -f market_tracker.sh 2>/dev/null
 sleep 1
 
 # Start Conky Instances
@@ -15,3 +16,5 @@ sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netstatrc &
 sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netdiscoverrc &
+sleep 1
+conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-marketsrc &
