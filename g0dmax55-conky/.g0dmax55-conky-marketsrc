@@ -1,0 +1,46 @@
+conky.config = {
+    background = true,
+    use_xft = true,
+    font = 'monospace:pixelsize=13',
+    xftalpha = 1,
+    update_interval = 60,
+    total_run_times = 0,
+    own_window = true,
+    own_window_type = 'desktop',
+    own_window_class = 'Conky',
+    own_window_argb_visual = true,
+    own_window_transparent = true,
+    own_window_argb_value = 0,
+    own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    double_buffer = true,
+    imlib_cache_size = 0,
+    draw_shades = false,
+    draw_outline = false,
+    draw_borders = false,
+    draw_graph_borders = true,
+    stippled_borders = 0,
+    border_inner_margin = 6,
+    border_width = 0,
+    default_color = '999999',
+    default_shade_color = 'black',
+    default_outline_color = 'white',
+    alignment = 'bottom_right',
+    gap_x = 400,
+    gap_y = 300,
+    no_buffers = true,
+    override_utf8_locale = true,
+    use_spacer = 'none',
+    text_buffer_size = 16000,
+    maximum_width = 500,
+    minimum_width = 500,
+
+    -- Custom Neon Palette
+    color1 = '999999', -- Grey (Labels/Brackets/Rest)
+    color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
+    color3 = '00FF00', -- Green (Bullish/Up)
+    color6 = 'FF0000', -- Red (Tree Structure / Bearish/Down)
+}
+
+conky.text = [[
+${execpi 60 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/market_tracker.sh}
+]]

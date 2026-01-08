@@ -34,7 +34,7 @@ conky.config = {
     use_spacer = 'none',
     text_buffer_size = 16000,
     maximum_width = 800,
-    minimum_width = 420,
+    minimum_width = 800,
     minimum_height = 0,
     nvidia_display = ':0',
 

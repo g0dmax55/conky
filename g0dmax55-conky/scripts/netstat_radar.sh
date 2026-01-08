@@ -11,10 +11,10 @@ C1="\${color1}"  # Grey - Text
 CR="\${color}"   # Reset
 
 # FIXED SLOT COUNTS
-TCP_SLOTS=26
+TCP_SLOTS=23
 UDP_SLOTS=4
 LISTEN_SLOTS=14
-ROUTE_SLOTS=3
+ROUTE_SLOTS=6
 
 # Empty slot line
 EMPTY="${C6}│  ├─${CR} ${C1}---${CR}"
@@ -42,7 +42,7 @@ TCP_EST=$(echo "$NETSTAT_TN" | grep -c ESTABLISHED)
 TCP_WAIT=$(echo "$NETSTAT_TN" | grep -c TIME_WAIT)
 TCP_LISTEN=$(netstat -tln 2>/dev/null | tail -n +3 | wc -l)
 UDP_TOTAL=$(netstat -un 2>/dev/null | tail -n +3 | wc -l)
-echo "${C6}│  ├─${CR} ${C1}est:${C6}[${C2}${TCP_EST}${C6}]${CR} ${C1}wait:${C6}[${C2}${TCP_WAIT}${C6}]${CR} ${C1}listen:${C6}[${C2}${TCP_LISTEN}${C6}]${CR} ${C1}udp:${C6}[${C2}${UDP_TOTAL}${C6}]${CR}"
+echo "${C6}│  ├─${CR} ${C1}established:${C6}[${C2}${TCP_EST}${C6}]${CR} ${C1}time_wait:${C6}[${C2}${TCP_WAIT}${C6}]${CR} ${C1}listening:${C6}[${C2}${TCP_LISTEN}${C6}]${CR} ${C1}udp_total:${C6}[${C2}${UDP_TOTAL}${C6}]${CR}"
 echo "${C6}│${CR}"
 
 # 2. ROUTING
