@@ -61,13 +61,19 @@ printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Addr
         sudo arp-scan -l -I "$IFACE" --oui=/usr/share/arp-scan/ieee-oui.txt 2>/dev/null | grep -E '^[0-9]+\.' | head -n $DEVICE_SLOTS | while read ip mac vendor; do
             [ -z "$ip" ] && continue
             vendor=${vendor:-"Unknown"}
-            # Raw data with whitespace trimming only
-            vendor=$(echo "$vendor" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            # Smart truncation: if longer than 40 chars, truncate with ...
-            if [ ${#vendor} -gt 40 ]; then
-                vendor="${vendor:0:37}..."
+            # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
+            vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            
+            # If vendor matches MAC address pattern, set to Unknown
+            if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
+                vendor="Unknown"
             fi
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-40s${C6}]${CR}\n" \
+            
+            # Smart truncation: if longer than 45 chars, truncate with ...
+            if [ ${#vendor} -gt 45 ]; then
+                vendor="${vendor:0:42}..."
+            fi
+            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-45s${C6}]${CR}\n" \
                 "$ip" "$mac" "$vendor"
         done
     else
@@ -81,13 +87,19 @@ printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Addr
             # Try to get vendor from MAC (first 3 octets)
             vendor=$(grep -i "^${mac:0:8}" /usr/share/arp-scan/ieee-oui.txt 2>/dev/null | cut -f2 || echo "-")
             [ -z "$vendor" ] && vendor="-"
-            # Raw data with whitespace trimming only
-            vendor=$(echo "$vendor" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            # Smart truncation: if longer than 40 chars, truncate with ...
-            if [ ${#vendor} -gt 40 ]; then
-                vendor="${vendor:0:37}..."
+            # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
+            vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            
+            # If vendor matches MAC address pattern, set to Unknown
+            if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
+                vendor="Unknown"
             fi
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-40s${C6}]${CR}\n" \
+            
+            # Smart truncation: if longer than 45 chars, truncate with ...
+            if [ ${#vendor} -gt 45 ]; then
+                vendor="${vendor:0:42}..."
+            fi
+            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-45s${C6}]${CR}\n" \
                 "$ip" "$mac" "$vendor"
         done
     fi
