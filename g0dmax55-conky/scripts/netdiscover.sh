@@ -56,9 +56,18 @@ printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Addr
 # Try arp-scan first (faster, also needs sudo but can be set NOPASSWD)
 # Fall back to arp cache with MAC vendor lookup
 {
-    if command -v arp-scan &> /dev/null; then
-        # Use arp-scan if available (needs sudo)
-        sudo arp-scan -l -I "$IFACE" --oui=/usr/share/arp-scan/ieee-oui.txt 2>/dev/null | grep -E '^[0-9]+\.' | head -n $DEVICE_SLOTS | while read ip mac vendor; do
+    # Try netdiscover first
+    OUTPUT=""
+    if command -v netdiscover &> /dev/null; then
+         # Try to run netdiscover. 
+         # We use a timeout to prevent hanging if it waits for something
+         # and we check if it produces any output.
+         # 2>/dev/null to suppress stderr (password prompts etc) which would ruin conky parsing
+         OUTPUT=$(timeout 5s sudo -n netdiscover -i "$IFACE" -r "$SUBNET" -P -N 2>/dev/null)
+    fi
+
+    if [ -n "$OUTPUT" ]; then
+        echo "$OUTPUT" | grep -E '^[ 0-9]+\.' | head -n $DEVICE_SLOTS | while read ip mac count len vendor; do
             [ -z "$ip" ] && continue
             vendor=${vendor:-"Unknown"}
             # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
