@@ -9,7 +9,7 @@ C1="\${color1}"  # Grey - Text
 CR="\${color}"   # Reset
 
 # Fixed slots for stable layout
-DEVICE_SLOTS=12
+DEVICE_SLOTS=14
 
 # Empty slot line
 EMPTY="${C6}│  ├─${CR} ${C1}---${CR}"
