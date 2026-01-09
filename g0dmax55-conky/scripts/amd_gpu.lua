@@ -41,3 +41,27 @@ function conky_amd_gpu_percent()
     end
     return 0
 end
+
+function conky_amd_vram_percent()
+    local used_f = io.open("/sys/class/drm/card0/device/mem_info_vram_used", "r")
+    local total_f = io.open("/sys/class/drm/card0/device/mem_info_vram_total", "r")
+
+    if used_f and total_f then
+        local used_c = used_f:read("*all")
+        local total_c = total_f:read("*all")
+        
+        used_f:close()
+        total_f:close()
+
+        local used = tonumber(used_c)
+        local total = tonumber(total_c)
+
+        if used and total and total > 0 then
+            return math.floor((used / total) * 100)
+        end
+    else
+        if used_f then used_f:close() end
+        if total_f then total_f:close() end
+    end
+    return 0
+end
