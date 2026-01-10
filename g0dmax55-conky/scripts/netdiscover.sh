@@ -76,7 +76,7 @@ printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Addr
              # If 2nd hex digit is 2, 6, A, E -> LAA
              second_char=${mac_clean:1:1}
              if [[ "$second_char" =~ [26AE] ]]; then
-                 vendor="Unknown (Private/LAA)"
+                 vendor="Unknown (Locally Administered Address)"
              else
                  vendor="-"
              fi
