@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Network Discovery Script using netdiscover/arp-scan
-# Shows devices on LAN with MAC vendor info
+# Passive LAN Device Monitor
+# Reads the kernel ARP cache to show local devices without active scanning.
+# Zero network traffic, zero kernel log spam.
+# ULTRA-CLEAN MODE: Zero scans, zero logs, uses kernel ARP cache only.
 
 C6="\${color6}"  # Red - Tree/Brackets
 C2="\${color2}"  # Cyan - Values
@@ -53,65 +55,48 @@ SUBNET=$(ip -o -f inet addr show $IFACE 2>/dev/null | awk '{print $4}')
 echo "${C6}├─${CR} ${C6}[${C2}LAN_DISCOVERY${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${IFACE}${C6}]${CR} ${C6}[${C2}${SUBNET:-Unconfigured}${C6}]${CR}"
 printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Address" "Vendor"
 
-# Try arp-scan first (faster, also needs sudo but can be set NOPASSWD)
-# Fall back to arp cache with MAC vendor lookup
+# Main Logic: Read ARP table and resolve vendors
 {
-    # Try netdiscover first
-    OUTPUT=""
-    if command -v netdiscover &> /dev/null; then
-         # Try to run netdiscover. 
-         # We use a timeout to prevent hanging if it waits for something
-         # and we check if it produces any output.
-         # 2>/dev/null to suppress stderr (password prompts etc) which would ruin conky parsing
-         OUTPUT=$(timeout 5s sudo -n netdiscover -i "$IFACE" -r "$SUBNET" -P -N 2>/dev/null)
-    fi
+    # Get active neighbors from kernel ARP table
+    arp -an -i "$IFACE" 2>/dev/null | grep -v incomplete | while read line; do
+        ip=$(echo "$line" | grep -oP '\(\K[^)]+')
+        mac=$(echo "$line" | awk '{print $4}')
+        [ -z "$ip" ] && continue
+        [ "$mac" = "<incomplete>" ] && continue
+            # Clean MAC for OUI lookup (remove colons, uppercase)
+        mac_clean=$(echo "$mac" | tr -d ':' | tr 'a-z' 'A-Z')
+        oui=${mac_clean:0:6}
+        
+        # Try to get vendor from OUI file
+        # File format: HHHHHH[TAB]Vendor Name (can contain spaces)
+        vendor=$(grep "^$oui" /usr/share/arp-scan/ieee-oui.txt 2>/dev/null | cut -f2-)
+        
+        if [ -z "$vendor" ]; then
+             # Check for LAA (Locally Administered Address)
+             # If 2nd hex digit is 2, 6, A, E -> LAA
+             second_char=${mac_clean:1:1}
+             if [[ "$second_char" =~ [26AE] ]]; then
+                 vendor="Unknown (Private/LAA)"
+             else
+                 vendor="-"
+             fi
+        fi
 
-    if [ -n "$OUTPUT" ]; then
-        echo "$OUTPUT" | grep -E '^[ 0-9]+\.' | head -n $DEVICE_SLOTS | while read ip mac count len vendor; do
-            [ -z "$ip" ] && continue
-            vendor=${vendor:-"Unknown"}
-            # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
-            vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            
-            # If vendor matches MAC address pattern, set to Unknown
-            if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
-                vendor="Unknown"
-            fi
-            
-            # Smart truncation: if longer than 45 chars, truncate with ...
-            if [ ${#vendor} -gt 45 ]; then
-                vendor="${vendor:0:42}..."
-            fi
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-45s${C6}]${CR}\n" \
-                "$ip" "$mac" "$vendor"
-        done
-    else
-        # Fall back to ARP cache
-        arp -an -i "$IFACE" 2>/dev/null | grep -v incomplete | while read line; do
-            ip=$(echo "$line" | grep -oP '\(\K[^)]+')
-            mac=$(echo "$line" | awk '{print $4}')
-            [ -z "$ip" ] && continue
-            [ "$mac" = "<incomplete>" ] && continue
-            
-            # Try to get vendor from MAC (first 3 octets)
-            vendor=$(grep -i "^${mac:0:8}" /usr/share/arp-scan/ieee-oui.txt 2>/dev/null | cut -f2 || echo "-")
-            [ -z "$vendor" ] && vendor="-"
-            # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
-            vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            
-            # If vendor matches MAC address pattern, set to Unknown
-            if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
-                vendor="Unknown"
-            fi
-            
-            # Smart truncation: if longer than 45 chars, truncate with ...
-            if [ ${#vendor} -gt 45 ]; then
-                vendor="${vendor:0:42}..."
-            fi
-            printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C1}%-45s${C6}]${CR}\n" \
-                "$ip" "$mac" "$vendor"
-        done
-    fi
+        # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
+        vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        
+        # If vendor matches MAC address pattern, set to Unknown
+        if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
+            vendor="Unknown"
+        fi
+        
+        # Smart truncation: if longer than 45 chars, truncate with ...
+        if [ ${#vendor} -gt 45 ]; then
+            vendor="${vendor:0:42}..."
+        fi
+        printf "${C6}│  ├─${CR} ${C6}[${C2}%-15s${C6}]${CR} ${C6}[${C2}%-17s${C6}]${CR} ${C6}[${C2}%-45s${C6}]${CR}\n" \
+            "$ip" "$mac" "$vendor"
+    done
 } | head -n $DEVICE_SLOTS | output_fixed_lines $DEVICE_SLOTS
 
 echo "${C6}└─${CR}"
