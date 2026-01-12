@@ -55,40 +55,27 @@ SUBNET=$(ip -o -f inet addr show $IFACE 2>/dev/null | awk '{print $4}')
 echo "${C6}├─${CR} ${C6}[${C2}LAN_DISCOVERY${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${IFACE}${C6}]${CR} ${C6}[${C2}${SUBNET:-Unconfigured}${C6}]${CR}"
 printf "${C6}│  ├─${CR} ${C1}%-17s %-19s %s${CR}\n" "IP Address" "MAC Address" "Vendor"
 
-# Main Logic: Read ARP table and resolve vendors
+# Main Logic: Active ARP Scan
 {
-    # Get active neighbors from kernel ARP table
-    arp -an -i "$IFACE" 2>/dev/null | grep -v incomplete | while read line; do
-        ip=$(echo "$line" | grep -oP '\(\K[^)]+')
-        mac=$(echo "$line" | awk '{print $4}')
-        [ -z "$ip" ] && continue
-        [ "$mac" = "<incomplete>" ] && continue
-            # Clean MAC for OUI lookup (remove colons, uppercase)
-        mac_clean=$(echo "$mac" | tr -d ':' | tr 'a-z' 'A-Z')
-        oui=${mac_clean:0:6}
+    # Run active scan using arp-scan
+    sudo arp-scan -l -I "$IFACE" --oui=/usr/share/arp-scan/ieee-oui.txt --retry=1 --timeout=200 2>/dev/null | grep -E "^[0-9]{1,3}\." | while read line; do
+        ip=$(echo "$line" | awk '{print $1}')
+        mac=$(echo "$line" | awk '{print $2}')
+        # arp-scan output format: IP MAC Vendor (rest of line)
+        vendor=$(echo "$line" | cut -f3-)
+
+        # Clean/Normalize Vendor
+        if [ -z "$vendor" ] || [ "$vendor" = "(Unknown)" ]; then
+             vendor="Unknown"
+        fi
         
-        # Try to get vendor from OUI file
-        # File format: HHHHHH[TAB]Vendor Name (can contain spaces)
-        vendor=$(grep "^$oui" /usr/share/arp-scan/ieee-oui.txt 2>/dev/null | cut -f2-)
-        
-        if [ -z "$vendor" ]; then
-             # Check for LAA (Locally Administered Address)
-             # If 2nd hex digit is 2, 6, A, E -> LAA
-             second_char=${mac_clean:1:1}
-             if [[ "$second_char" =~ [26AE] ]]; then
-                 vendor="Unknown (Locally Administered Address)"
-             else
-                 vendor="-"
-             fi
+        # Check for LAA in vendor string (arp-scan identifies this)
+        if [[ "$vendor" == *"(Unknown: locally administered)"* ]]; then
+             vendor="Unknown (Locally Administered Address)"
         fi
 
-        # Raw data with whitespace trimming AND collapsing multiple spaces (plus TABS)
-        vendor=$(echo "$vendor" | tr '\t' ' ' | tr -s ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        
-        # If vendor matches MAC address pattern, set to Unknown
-        if [[ "$vendor" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
-            vendor="Unknown"
-        fi
+        # Raw data with whitespace trimming
+        vendor=$(echo "$vendor" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
         
         # Smart truncation: if longer than 45 chars, truncate with ...
         if [ ${#vendor} -gt 45 ]; then

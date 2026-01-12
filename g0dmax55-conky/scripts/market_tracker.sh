@@ -150,19 +150,19 @@ if [ -n "$GOLD_DATA" ]; then
     if [ -n "$GOLD_OZ" ]; then
         # Convert from per oz (31.1g) to per gram and per pavan (8g)
         GOLD_GRAM=$(echo "$GOLD_OZ" | awk '{printf "%.0f", $1 / 31.1}')
-        GOLD_PAVAN=$(echo "$GOLD_GRAM" | awk '{printf "%.0f", $1 * 8}')
+        GOLD_SOV=$(echo "$GOLD_GRAM" | awk '{printf "%.0f", $1 * 8}')
         GOLD_CHG=$(format_percent_colored "${GOLD_CHANGE:-0}")
         
-        echo "${C6}│  ├─${CR} ${C1}GOLD:${CR} ${C6}[${C2}₹${GOLD_GRAM}/g${C6}]${CR} ${C6}[${C2}₹${GOLD_PAVAN}/pavan${C6}]${CR} ${C6}[${GOLD_CHG}${C6}]${CR}"
+        echo "${C6}│  ├─${CR} ${C1}GOLD:${CR} ${C6}[${C2}₹${GOLD_GRAM}/g${C6}]${CR} ${C6}[${C2}₹${GOLD_SOV}/sovereign${C6}]${CR} ${C6}[${GOLD_CHG}${C6}]${CR}"
         
         # Calculate Silver (Gold/Silver ratio is ~82)
         SILVER_OZ=$(echo "$GOLD_OZ" | awk '{printf "%.0f", $1 / 82}')
         SILVER_GRAM=$(echo "$SILVER_OZ" | awk '{printf "%.0f", $1 / 31.1}')
-        SILVER_PAVAN=$(echo "$SILVER_GRAM" | awk '{printf "%.0f", $1 * 8}')
+        SILVER_SOV=$(echo "$SILVER_GRAM" | awk '{printf "%.0f", $1 * 8}')
         SILVER_CHG=$(format_percent_colored "${GOLD_CHANGE:-0}")
         
         if [ "$SILVER_GRAM" != "0" ] && [ -n "$SILVER_GRAM" ]; then
-            echo "${C6}│  ├─${CR} ${C1}SILVER:${CR} ${C6}[${C2}₹${SILVER_GRAM}/g${C6}]${CR} ${C6}[${C2}₹${SILVER_PAVAN}/pavan${C6}]${CR} ${C6}[${SILVER_CHG}${C6}]${CR}"
+            echo "${C6}│  ├─${CR} ${C1}SILVER:${CR} ${C6}[${C2}₹${SILVER_GRAM}/g${C6}]${CR} ${C6}[${C2}₹${SILVER_SOV}/sovereign${C6}]${CR} ${C6}[${SILVER_CHG}${C6}]${CR}"
         else
             echo "${C6}│  ├─${CR} ${C1}SILVER:${CR} ${C6}[${C2}--${C6}]${CR}"
         fi
