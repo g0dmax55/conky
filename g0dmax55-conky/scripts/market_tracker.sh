@@ -34,7 +34,7 @@ get_cached() {
     fi
     
     # Fetch new data
-    local data=$(curl -s --max-time 5 "$url" 2>/dev/null)
+    local data=$(curl -s --max-time 15 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "$url" 2>/dev/null)
     if [ -n "$data" ] && [ "$data" != "null" ]; then
         echo "$data" > "$cache_file"
         echo "$data"
@@ -195,10 +195,34 @@ fetch_google_finance() {
     fi
     
     # Fetch from Google Finance
-    local page=$(curl -s --max-time 5 "https://www.google.com/finance/quote/${symbol}" 2>/dev/null)
-    local price=$(echo "$page" | grep -o 'data-last-price="[0-9,.]*"' | head -1 | grep -o '[0-9,.]*' | tr -d ',')
-    local change=$(echo "$page" | grep -o 'data-last-price-change="[-0-9.]*"' | head -1 | grep -o '[-0-9.]*')
-    local pct=$(echo "$page" | grep -o 'data-change-percent="[-0-9.]*"' | head -1 | grep -o '[-0-9.]*')
+    local page=$(curl -s --max-time 15 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "https://www.google.com/finance/quote/${symbol}" 2>/dev/null)
+    
+    # Extract using HTML classes (Google Finance changed structure)
+    # Price is in <div class="YMlKec fxKbKc">
+    local price_raw=$(echo "$page" | grep -oP '<div class="YMlKec fxKbKc">\K[^<]+' | head -1)
+    local price=$(echo "$price_raw" | tr -d ',')
+    
+    # Change/Percent is in subsequent aria-label, e.g. aria-label="Down by 0.47%"
+    # We use price_raw as anchor because it appears multiple times but correct one is followed by label
+    # Updated Regex: Search for label containing '%' to avoid "Key events" label in stocks
+    local label=""
+    if [ -n "$price_raw" ]; then
+        # Escape special chars in price for regex
+        local price_esc=$(echo "$price_raw" | sed 's/[.[\*^$]/\\&/g')
+        label=$(echo "$page" | grep -oP "${price_esc}.*?aria-label=\"\K[^\"]*?[0-9.]+%[^\"]*" | head -1)
+    fi
+    
+    local pct=$(echo "$label" | grep -oE '[0-9.]+' | head -1)
+    
+    # Add delay to avoid rate limiting
+    sleep 1.5
+    
+    # Determine sign from label text
+    if echo "$label" | grep -q "Down"; then
+        pct="-${pct}"
+    fi
+
+    local change="0" # Absolute change not displayed, so 0 is fine
     
     if [ -n "$price" ]; then
         echo "${price}|${change:-0}|${pct:-0}" > "$cache_file"
@@ -262,7 +286,7 @@ for i in "${!STOCKS[@]}"; do
         STOCK_PRICE=$(echo "$STOCK_DATA" | cut -d'|' -f1)
         STOCK_PCT=$(echo "$STOCK_DATA" | cut -d'|' -f3)
         STOCK_CHG=$(format_percent_colored "${STOCK_PCT:-0}")
-        printf "${C6}│  ├─${CR} ${C1}%-10s${CR} ${C6}[${C2}₹%s${C6}]${CR} ${C6}[%s${C6}]${CR}\n" "${NAME}:" "$STOCK_PRICE" "$STOCK_CHG"
+        printf "${C6}│  ├─${CR} ${C1}%-10s${CR} ${C6}[${C2}%s${C6}]${CR} ${C6}[%s${C6}]${CR}\n" "${NAME}:" "$STOCK_PRICE" "$STOCK_CHG"
     else
         printf "${C6}│  ├─${CR} ${C1}%-10s${CR} ${C6}[${C2}--${C6}]${CR}\n" "${NAME}:"
     fi
