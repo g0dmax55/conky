@@ -52,5 +52,5 @@ ${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_rx
 ${voffset 3}
 ${alignr}${color1}REMOTE SSH UPLOAD${color}
 ${alignr}${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_tx_rate_rate 2>/dev/null || echo 0)'; if(v>=1048576) printf "%.1f MB/s",v/1048576; else if(v>=1024) printf "%.1f KB/s",v/1024; else printf "%d B/s",v}'}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_tx_rate_total 2>/dev/null || echo 0)'; if(v>=1073741824) printf "%.2f GB",v/1073741824; else if(v>=1048576) printf "%.1f MB",v/1048576; else if(v>=1024) printf "%.1f KB",v/1024; else printf "%d B",v}'}${color6}]${color} ${color1}total${color}
-${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_tx.sh 35,400 004400 00FF00 100 -l -t}
+${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_tx.sh 35,400 002200 00AA44 100 -l -t}
 ]]

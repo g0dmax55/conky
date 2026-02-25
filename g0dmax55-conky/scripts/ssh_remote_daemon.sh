@@ -47,10 +47,22 @@ while true; do
                 if [ "$RX_RATE" -lt 0 ]; then RX_RATE=0; fi
                 if [ "$TX_RATE" -lt 0 ]; then TX_RATE=0; fi
                 
-                # Scale graphs (Max: 10KB/s — makes idle SSH traffic visible)
-                MAX_BW=10000
-                RX_PCT=$(( RX_RATE * 100 / MAX_BW ))
-                TX_PCT=$(( TX_RATE * 100 / MAX_BW ))
+                # Auto-scale: track peak rate, use it as ceiling (min floor: 1KB/s)
+                PEAK_RATE=${PEAK_RATE:-1000}
+                if [ "$RX_RATE" -gt "$PEAK_RATE" ]; then PEAK_RATE=$RX_RATE; fi
+                if [ "$TX_RATE" -gt "$PEAK_RATE" ]; then PEAK_RATE=$TX_RATE; fi
+
+                # Slowly decay peak so graph adapts to quieter periods
+                DECAY_COUNT=${DECAY_COUNT:-0}
+                DECAY_COUNT=$((DECAY_COUNT + 1))
+                if [ "$DECAY_COUNT" -ge 30 ]; then
+                    PEAK_RATE=$(( PEAK_RATE * 90 / 100 ))
+                    if [ "$PEAK_RATE" -lt 1000 ]; then PEAK_RATE=1000; fi
+                    DECAY_COUNT=0
+                fi
+
+                RX_PCT=$(( RX_RATE * 100 / PEAK_RATE ))
+                TX_PCT=$(( TX_RATE * 100 / PEAK_RATE ))
                 
                 if [ "$RX_PCT" -gt 100 ]; then RX_PCT=100; fi
                 if [ "$TX_PCT" -gt 100 ]; then TX_PCT=100; fi
