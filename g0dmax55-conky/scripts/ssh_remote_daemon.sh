@@ -1,12 +1,10 @@
 #!/bin/bash
 
 # ==========================================
-# SSH Server Configuration
+# SSH Server Configuration — loaded from .ssh_env
 # ==========================================
-SERVER_IP="REDACTED"      # Replace with your server IP
-USERNAME="root"                # Replace with your username
-PASSWORD="REDACTED"       # Replace with your password
-INTERFACE="eth0"               # Replace with your remote server's active network interface (e.g., eth0, ens33)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/.ssh_env"
 UPDATE_INTERVAL=1             # How often to check in seconds
 # ==========================================
 
