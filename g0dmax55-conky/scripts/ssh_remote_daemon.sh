@@ -11,6 +11,7 @@ UPDATE_INTERVAL=1             # How often to check in seconds
 # Files to store rates for Conky to read
 CACHE_RX="/tmp/.g0dmax55_conky_remote_ssh_rx_rate"
 CACHE_TX="/tmp/.g0dmax55_conky_remote_ssh_tx_rate"
+CACHE_STATUS="/tmp/.g0dmax55_conky_remote_ssh_status"
 
 OLD_RX=0
 OLD_TX=0
@@ -27,6 +28,7 @@ while true; do
     fi
 
     # Execute stream and parse line by line
+    echo "CONNECTED" > "$CACHE_STATUS"
     "${EXEC_SSH[@]}" "$CMD" 2>/dev/null | while read -r RX_BYTES && read -r TX_BYTES; do
         NOW_MS=$(date +%s%3N)
         
@@ -70,6 +72,7 @@ while true; do
     done
 
     # If stream breaks or disconnects, reset values to zero
+    echo "DISCONNECTED" > "$CACHE_STATUS"
     echo "0" > "$CACHE_RX"
     echo "0" > "$CACHE_TX"
     echo "0" > "${CACHE_RX}_rate"

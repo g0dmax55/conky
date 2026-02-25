@@ -38,16 +38,19 @@ conky.config = {
     -- Custom Neon Palette
     color1 = '999999', -- Grey (Labels/Brackets/Rest)
     color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
-    color6 = 'FF0000', -- Red (Tree Structure)
+    color3 = '00FF00', -- Green (Connected/Bullish)
+    color4 = 'FFFF00', -- Yellow (Waiting)
+    color6 = 'FF0000', -- Red (Tree Structure/Disconnected)
 }
 
 conky.text = [[
 ${voffset 5}
+${alignr}${color1}SSH${color} ${color6}[${execpi 1 S=$(cat /tmp/.g0dmax55_conky_remote_ssh_status 2>/dev/null); if [ "$S" = "CONNECTED" ]; then echo "\${color3}CONNECTED"; elif [ "$S" = "DISCONNECTED" ]; then echo "\${color6}DISCONNECTED"; else echo "\${color4}WAITING"; fi}${color6}]${color}
 ${alignr}${color1}REMOTE SSH DOWNLOAD${color}
 ${alignr}${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_rx_rate_rate 2>/dev/null || echo 0)'; if(v>=1048576) printf "%.1f MB/s",v/1048576; else if(v>=1024) printf "%.1f KB/s",v/1024; else printf "%d B/s",v}'}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_rx_rate_total 2>/dev/null || echo 0)'; if(v>=1073741824) printf "%.2f GB",v/1073741824; else if(v>=1048576) printf "%.1f MB",v/1048576; else if(v>=1024) printf "%.1f KB",v/1024; else printf "%d B",v}'}${color6}]${color} ${color1}total${color}
-${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_rx.sh 35,400 440000 FF0000 100 -l -t}
+${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_rx.sh 35,400 220044 9900FF 100 -l -t}
 ${voffset 3}
 ${alignr}${color1}REMOTE SSH UPLOAD${color}
 ${alignr}${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_tx_rate_rate 2>/dev/null || echo 0)'; if(v>=1048576) printf "%.1f MB/s",v/1048576; else if(v>=1024) printf "%.1f KB/s",v/1024; else printf "%d B/s",v}'}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${execi 1 awk 'BEGIN{v='$(cat /tmp/.g0dmax55_conky_remote_ssh_tx_rate_total 2>/dev/null || echo 0)'; if(v>=1073741824) printf "%.2f GB",v/1073741824; else if(v>=1048576) printf "%.1f MB",v/1048576; else if(v>=1024) printf "%.1f KB",v/1024; else printf "%d B",v}'}${color6}]${color} ${color1}total${color}
-${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_tx.sh 35,400 440000 FF0000 100 -l -t}
+${execigraph 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_tx.sh 35,400 004400 00FF00 100 -l -t}
 ]]
