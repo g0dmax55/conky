@@ -78,7 +78,7 @@ is_market_open() {
     local day=$(date +%u)  # 1=Monday, 7=Sunday
     local hour=$(date +%H)
     local minute=$(date +%M)
-    local current_time=$((hour * 60 + minute))
+    local current_time=$(( 10#$hour * 60 + 10#$minute ))
     
     # Market hours: 9:15 AM - 3:30 PM IST, Mon-Fri
     local open_time=$((9 * 60 + 15))   # 9:15 AM

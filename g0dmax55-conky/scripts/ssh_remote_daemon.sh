@@ -4,10 +4,10 @@
 # SSH Server Configuration
 # ==========================================
 SERVER_IP="REDACTED"      # Replace with your server IP
-USERNAME=""                # Replace with your username
-PASSWORD=""       # Replace with your password
+USERNAME="root"                # Replace with your username
+PASSWORD="REDACTED"       # Replace with your password
 INTERFACE="eth0"               # Replace with your remote server's active network interface (e.g., eth0, ens33)
-UPDATE_INTERVAL=2              # How often to check in seconds
+UPDATE_INTERVAL=1             # How often to check in seconds
 # ==========================================
 
 # Files to store rates for Conky to read
@@ -19,22 +19,23 @@ OLD_TX=0
 OLD_TIME=$(date +%s%3N)
 
 while true; do
-    # Fetch RX and TX bytes from the remote server
-    # We read /sys/class/net/$INTERFACE/statistics/rx_bytes and tx_bytes
+    # Open a persistent SSH stream to fetch statistics every second without re-authenticating
+    CMD="while true; do cat /sys/class/net/$INTERFACE/statistics/rx_bytes /sys/class/net/$INTERFACE/statistics/tx_bytes; sleep $UPDATE_INTERVAL; done"
+    
     if command -v sshpass &>/dev/null; then
-        # We redirect stderr to dev/null so warnings like "Could not chdir to home directory" do not corrupt stdout
-        STATS=$(sshpass -p "$PASSWORD" ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP" "cat /sys/class/net/$INTERFACE/statistics/rx_bytes /sys/class/net/$INTERFACE/statistics/tx_bytes" 2>/dev/null)
+        EXEC_SSH=(sshpass -p "$PASSWORD" ssh -o ConnectTimeout=5 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP")
     else
-        STATS=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP" "cat /sys/class/net/$INTERFACE/statistics/rx_bytes /sys/class/net/$INTERFACE/statistics/tx_bytes" 2>/dev/null)
+        EXEC_SSH=(ssh -o ConnectTimeout=5 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP")
     fi
 
-    NOW_MS=$(date +%s%3N)
-
-    if [ -n "$STATS" ]; then
-        RX_BYTES=$(echo "$STATS" | sed -n '1p' | tr -dc '0-9')
-        TX_BYTES=$(echo "$STATS" | sed -n '2p' | tr -dc '0-9')
+    # Execute stream and parse line by line
+    "${EXEC_SSH[@]}" "$CMD" 2>/dev/null | while read -r RX_BYTES && read -r TX_BYTES; do
+        NOW_MS=$(date +%s%3N)
         
-        # Ensure they are numbers
+        # Clean the input to ensure integers only
+        RX_BYTES=$(echo "$RX_BYTES" | tr -dc '0-9')
+        TX_BYTES=$(echo "$TX_BYTES" | tr -dc '0-9')
+        
         if [[ "$RX_BYTES" =~ ^[0-9]+$ ]] && [[ "$TX_BYTES" =~ ^[0-9]+$ ]]; then
             TIME_DIFF_MS=$((NOW_MS - OLD_TIME))
             
@@ -42,28 +43,40 @@ while true; do
                 RX_RATE=$(( (RX_BYTES - OLD_RX) * 1000 / TIME_DIFF_MS ))
                 TX_RATE=$(( (TX_BYTES - OLD_TX) * 1000 / TIME_DIFF_MS ))
                 
-                # Handle potential wrap-around or interface resets
+                # Format checks
                 if [ "$RX_RATE" -lt 0 ]; then RX_RATE=0; fi
                 if [ "$TX_RATE" -lt 0 ]; then TX_RATE=0; fi
                 
-                # Save raw rates for the graph
-                echo "$RX_RATE" > "$CACHE_RX"
-                echo "$TX_RATE" > "$CACHE_TX"
+                # Scale graphs (Max: 10KB/s — makes idle SSH traffic visible)
+                MAX_BW=10000
+                RX_PCT=$(( RX_RATE * 100 / MAX_BW ))
+                TX_PCT=$(( TX_RATE * 100 / MAX_BW ))
                 
-                # Also save the raw totals for text display
+                if [ "$RX_PCT" -gt 100 ]; then RX_PCT=100; fi
+                if [ "$TX_PCT" -gt 100 ]; then TX_PCT=100; fi
+                
+                # Write to caches for Conky
+                echo "$RX_PCT" > "$CACHE_RX"
+                echo "$TX_PCT" > "$CACHE_TX"
+                
+                echo "$RX_RATE" > "${CACHE_RX}_rate"
+                echo "$TX_RATE" > "${CACHE_TX}_rate"
                 echo "$RX_BYTES" > "${CACHE_RX}_total"
                 echo "$TX_BYTES" > "${CACHE_TX}_total"
             fi
             
             OLD_RX=$RX_BYTES
             OLD_TX=$TX_BYTES
+            OLD_TIME=$NOW_MS
         fi
-    else
-        # If connection fails, output 0 rate to drop the graph to zero
-        echo "0" > "$CACHE_RX"
-        echo "0" > "$CACHE_TX"
-    fi
+    done
+
+    # If stream breaks or disconnects, reset values to zero
+    echo "0" > "$CACHE_RX"
+    echo "0" > "$CACHE_TX"
+    echo "0" > "${CACHE_RX}_rate"
+    echo "0" > "${CACHE_TX}_rate"
     
-    OLD_TIME=$NOW_MS
-    sleep $UPDATE_INTERVAL
+    # Wait before attempting to reconnect
+    sleep 2
 done
