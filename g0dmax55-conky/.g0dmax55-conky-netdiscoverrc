@@ -3,7 +3,7 @@ conky.config = {
     use_xft = true,
     font = 'monospace:pixelsize=13',
     xftalpha = 1,
-    update_interval = 5.0,
+    update_interval = 30.0,
     total_run_times = 0,
     own_window = true,
     own_window_type = 'desktop',
@@ -23,15 +23,15 @@ conky.config = {
     default_shade_color = 'black',
     default_outline_color = 'black',
     alignment = 'top_left',
-    gap_x = 500,
-    gap_y = 790,
+    gap_x = 520,
+    gap_y = 750,
     no_buffers = true,
     override_utf8_locale = true,
     use_spacer = 'none',
     text_buffer_size = 32768,
     maximum_width = 800,
     minimum_width = 800,
-    minimum_height = 400,
+    minimum_height = 340,
 
     -- Custom Neon Palette
     color1 = '999999', -- Grey (Labels/Brackets/Rest)
@@ -40,5 +40,5 @@ conky.config = {
 }
 
 conky.text = [[
-${execpi 5 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/netdiscover.sh}
+${execpi 60 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/netdiscover.sh}
 ]]
