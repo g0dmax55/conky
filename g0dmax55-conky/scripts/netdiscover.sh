@@ -220,8 +220,6 @@ if [ "$PKG_MANAGER" = "apt" ] && [ "$TOTAL_UPDATES" -gt 0 ] && [ -s "$PKG_CACHE"
 fi
 
 echo "${C6}├─${CR} ${C6}[${C2}SYSTEM_UPDATES${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${PKG_MANAGER^^}${C6}]${CR} ${C6}[${C2}${LAST_CHECK}${C6}]${CR}"
-echo "${C6}│${CR}"
-echo "${C6}├─${CR} ${C1}status${CR} ${C6}─┤${CR}"
 echo "${C6}│  ├─${CR} ${C1}updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
 echo "${C6}│  ├─${CR} ${C1}security:${CR} ${C6}[${C2}${SECURITY_UPDATES}${C6}]${CR}"
 echo "${C6}│  ├─${CR} ${C1}flatpak:${CR} ${C6}[${C2}${FLATPAK_UPDATES}${C6}]${CR}"
