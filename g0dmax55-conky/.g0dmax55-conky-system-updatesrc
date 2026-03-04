@@ -40,5 +40,5 @@ conky.config = {
 }
 
 conky.text = [[
-${execpi 60 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/netdiscover.sh}
+${execpi 60 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/system_updates.sh}
 ]]

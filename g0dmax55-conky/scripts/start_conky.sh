@@ -4,7 +4,7 @@
 # Kill existing processes
 killall conky 2>/dev/null
 pkill -f netstat_radar.sh 2>/dev/null
-pkill -f netdiscover.sh 2>/dev/null
+pkill -f system_updates.sh 2>/dev/null
 pkill -f market_tracker.sh 2>/dev/null
 pkill -f ssh_remote_daemon.sh 2>/dev/null
 sleep 1
@@ -20,7 +20,7 @@ conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-networkrc &
 sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netstatrc &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netdiscoverrc &
+conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-system-updatesrc &
 sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-marketsrc &
 sleep 1
