@@ -5,16 +5,18 @@
 
 C6="\${color6}"  # Red - Tree/Brackets
 C2="\${color2}"  # Cyan - Values
+C3="\${color3}"  # Green - Healthy/No updates
 C1="\${color1}"  # Grey - Text
 CR="\${color}"   # Reset
 
 PACKAGE_SLOTS=12
+PENDING_DETAIL_SLOTS=2
 EMPTY="${C6}│  ├─${CR} ${C1}---${CR}"
 
 CACHE_DIR="/tmp/conky_update_watch"
 STATUS_CACHE="$CACHE_DIR/status.cache"
 PKG_CACHE="$CACHE_DIR/packages.cache"
-CACHE_TTL=900
+CACHE_TTL="${CONKY_UPDATE_CACHE_TTL:-60}"
 
 mkdir -p "$CACHE_DIR"
 
@@ -32,12 +34,53 @@ output_fixed_lines() {
 }
 
 cache_fresh() {
-    if [ ! -f "$STATUS_CACHE" ]; then
+    if [ ! -f "$STATUS_CACHE" ] || [ ! -f "$PKG_CACHE" ]; then
         return 1
     fi
+
+    # Refresh immediately when apt state changes (for example right after apt update/upgrade).
+    if cache_outdated_by_repo_sync; then
+        return 1
+    fi
+
     local age
     age=$(( $(date +%s) - $(stat -c %Y "$STATUS_CACHE" 2>/dev/null || echo 0) ))
     [ "$age" -lt "$CACHE_TTL" ]
+}
+
+latest_apt_state_mtime() {
+    local latest=0 file mtime
+
+    for file in \
+        /var/lib/apt/periodic/update-success-stamp \
+        /var/lib/apt/lists/*_InRelease \
+        /var/lib/apt/lists/*_Release \
+        /var/lib/dpkg/status \
+        /var/lib/dpkg/status-old \
+        /var/log/apt/history.log; do
+        [ -e "$file" ] || continue
+        mtime=$(stat -c %Y "$file" 2>/dev/null || echo 0)
+        [ "$mtime" -gt "$latest" ] && latest="$mtime"
+    done
+
+    echo "$latest"
+}
+
+cache_outdated_by_repo_sync() {
+    local cache_mtime pkg_mgr latest_repo_mtime=0
+    cache_mtime=$(stat -c %Y "$STATUS_CACHE" 2>/dev/null || echo 0)
+    pkg_mgr="$(detect_package_manager)"
+
+    case "$pkg_mgr" in
+        apt)
+            latest_repo_mtime="$(latest_apt_state_mtime)"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    [ "$latest_repo_mtime" -gt "$cache_mtime" ]
 }
 
 detect_package_manager() {
@@ -58,7 +101,10 @@ refresh_cache() {
     local pkg_mgr total_updates security_updates flatpak_updates snap_updates reboot_required
     local last_upgrade last_check package_lines raw
     local held_packages kernel_updates last_sync download_size repo_overview
-    local apt_need_line apt_stamp_file
+    local kept_back_updates autoremove_count full_upgrade_extra
+    local apt_need_line apt_stamp_file apt_sim apt_full_sim apt_installable_pkgs
+    local apt_auto_list full_upgrade_updates
+    local latest_list_file
 
     pkg_mgr="$(detect_package_manager)"
     total_updates=0
@@ -73,19 +119,49 @@ refresh_cache() {
     last_sync="--"
     download_size="--"
     repo_overview="--"
+    kept_back_updates=0
+    autoremove_count=0
+    full_upgrade_extra=0
 
     case "$pkg_mgr" in
         apt)
             raw="$(timeout 12s apt list --upgradable 2>/dev/null | awk 'NR > 1 && /upgradable from:/')"
-            total_updates=$(printf "%s\n" "$raw" | sed '/^[[:space:]]*$/d' | wc -l)
-            security_updates=$(timeout 12s apt-get -s upgrade 2>/dev/null | awk 'BEGIN{IGNORECASE=1} /^Inst / && /security/ {c++} END{print c+0}')
-            package_lines="$(printf "%s\n" "$raw" | awk '
+            apt_sim="$(timeout 12s sh -c 'LC_ALL=C apt-get -s upgrade 2>/dev/null')"
+            apt_full_sim="$(timeout 12s sh -c 'LC_ALL=C apt-get -s full-upgrade 2>/dev/null')"
+
+            total_updates="$(printf "%s\n" "$apt_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $1; exit}')"
+            [ -z "$total_updates" ] && total_updates=0
+            kept_back_updates="$(printf "%s\n" "$apt_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $(NF-2); exit}')"
+            [ -z "$kept_back_updates" ] && kept_back_updates=0
+
+            full_upgrade_updates="$(printf "%s\n" "$apt_full_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $1; exit}')"
+            [ -z "$full_upgrade_updates" ] && full_upgrade_updates="$total_updates"
+            full_upgrade_extra=$(( full_upgrade_updates - total_updates ))
+            [ "$full_upgrade_extra" -lt 0 ] && full_upgrade_extra=0
+
+            security_updates=$(printf "%s\n" "$apt_sim" | awk 'BEGIN{IGNORECASE=1} /^Inst / && /security/ {c++} END{print c+0}')
+            apt_installable_pkgs="$(printf "%s\n" "$apt_sim" | awk '/^Inst / {print $2}' | sed '/^[[:space:]]*$/d' | sort -u)"
+            apt_auto_list="$(printf "%s\n" "$apt_sim" | awk '
+                /^The following packages were automatically installed and are no longer required:/ {in_auto=1; next}
+                in_auto && /^Use / {in_auto=0}
+                in_auto {print}
+            ')"
+            autoremove_count=$(printf "%s\n" "$apt_auto_list" | awk '{for (i=1; i<=NF; i++) c++} END{print c+0}')
+
+            package_lines="$(printf "%s\n" "$raw" | awk -v installable="$apt_installable_pkgs" '
+                BEGIN {
+                    n=split(installable, pkgs, "\n")
+                    for (i=1; i<=n; i++) {
+                        if (pkgs[i] != "") allow[pkgs[i]]=1
+                    }
+                }
                 /upgradable from:/ {
                     pkgrepo=$1
                     newv=$2
                     split(pkgrepo, a, "/")
                     pkg=a[1]
                     repo=a[2]
+                    if (!(pkg in allow)) next
                     old=$0
                     sub(/.*upgradable from: /, "", old)
                     sub(/\].*/, "", old)
@@ -94,23 +170,21 @@ refresh_cache() {
             ' | head -n "$PACKAGE_SLOTS")"
             last_upgrade="$(awk -F': ' '/^End-Date:/ {d=$2} END {if (d) print d; else print "--"}' /var/log/apt/history.log 2>/dev/null)"
             held_packages=$(timeout 6s apt-mark showhold 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l)
-            kernel_updates=$(printf "%s\n" "$raw" | awk '
+            kernel_updates=$(printf "%s\n" "$package_lines" | awk -F'|' '
                 {
-                    split($1, a, "/")
-                    pkg=a[1]
+                    pkg=$1
                     if (pkg ~ /^(linux-image|linux-headers|linux-modules|linux-kbuild|linux-libc-dev|linux-perf)/) c++
                 }
                 END {print c+0}
             ')
-            repo_overview=$(printf "%s\n" "$raw" | awk '
+            repo_overview=$(printf "%s\n" "$package_lines" | awk -F'|' '
                 {
-                    split($1, a, "/")
-                    if (a[2] != "") print a[2]
+                    if ($4 != "") print $4
                 }
             ' | sort | uniq -c | sort -nr | head -n 2 | awk '{printf "%s(%s),", $2, $1}' | sed 's/,$//')
             [ -z "$repo_overview" ] && repo_overview="--"
 
-            apt_need_line="$(timeout 12s sh -c 'LC_ALL=C apt-get -s upgrade 2>/dev/null' | awk '/Need to get/ {print; exit}')"
+            apt_need_line="$(printf "%s\n" "$apt_sim" | awk '/Need to get/ {print; exit}')"
             download_size="$(printf "%s\n" "$apt_need_line" | sed -n 's/.*Need to get \([^ ]\+ [^ ]\+\).*/\1/p')"
             [ -z "$download_size" ] && download_size="--"
 
@@ -164,10 +238,11 @@ refresh_cache() {
 
     last_check="$(date '+%d-%b %I:%M %p')"
 
-    printf "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n" \
+    printf "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n" \
         "$pkg_mgr" "$total_updates" "$security_updates" "$flatpak_updates" \
         "$snap_updates" "$reboot_required" "$last_upgrade" "$last_check" \
-        "$held_packages" "$kernel_updates" "$last_sync" "$download_size" "$repo_overview" > "${STATUS_CACHE}.tmp"
+        "$held_packages" "$kernel_updates" "$last_sync" "$download_size" "$repo_overview" \
+        "$kept_back_updates" "$autoremove_count" "$full_upgrade_extra" > "${STATUS_CACHE}.tmp"
     mv "${STATUS_CACHE}.tmp" "$STATUS_CACHE"
 
     printf "%s\n" "$package_lines" > "${PKG_CACHE}.tmp"
@@ -195,14 +270,17 @@ KERNEL_UPDATES="0"
 LAST_SYNC="--"
 DOWNLOAD_SIZE="--"
 REPO_OVERVIEW="--"
+KEPT_BACK_UPDATES="0"
+AUTOREMOVE_COUNT="0"
+FULL_UPGRADE_EXTRA="0"
 
-IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW < "$STATUS_CACHE"
+IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW KEPT_BACK_UPDATES AUTOREMOVE_COUNT FULL_UPGRADE_EXTRA < "$STATUS_CACHE"
 
 # Cache schema migration: older cache has fewer fields.
 STATUS_PIPE_COUNT=$(head -n 1 "$STATUS_CACHE" 2>/dev/null | tr -cd '|' | wc -c)
-if [ "$STATUS_PIPE_COUNT" -lt 12 ]; then
+if [ "$STATUS_PIPE_COUNT" -lt 15 ]; then
     refresh_cache
-    IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW < "$STATUS_CACHE"
+    IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW KEPT_BACK_UPDATES AUTOREMOVE_COUNT FULL_UPGRADE_EXTRA < "$STATUS_CACHE"
 fi
 
 HELD_PACKAGES="${HELD_PACKAGES:-0}"
@@ -210,12 +288,15 @@ KERNEL_UPDATES="${KERNEL_UPDATES:-0}"
 LAST_SYNC="${LAST_SYNC:---}"
 DOWNLOAD_SIZE="${DOWNLOAD_SIZE:---}"
 REPO_OVERVIEW="${REPO_OVERVIEW:---}"
+KEPT_BACK_UPDATES="${KEPT_BACK_UPDATES:-0}"
+AUTOREMOVE_COUNT="${AUTOREMOVE_COUNT:-0}"
+FULL_UPGRADE_EXTRA="${FULL_UPGRADE_EXTRA:-0}"
 
 # Cache format migration: older cache had package names only.
 if [ "$PKG_MANAGER" = "apt" ] && [ "$TOTAL_UPDATES" -gt 0 ] && [ -s "$PKG_CACHE" ]; then
     if ! head -n 1 "$PKG_CACHE" | grep -q '|'; then
         refresh_cache
-        IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW < "$STATUS_CACHE"
+        IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW KEPT_BACK_UPDATES AUTOREMOVE_COUNT FULL_UPGRADE_EXTRA < "$STATUS_CACHE"
     fi
 fi
 
@@ -229,43 +310,49 @@ echo "${C6}│  ├─${CR} ${C1}last_upgrade:${CR} ${C6}[${C2}${LAST_UPGRADE}${
 if [ "$PKG_MANAGER" = "apt" ]; then
     echo "${C6}│  ├─${CR} ${C1}apt_sync:${CR} ${C6}[${C2}${LAST_SYNC}${C6}]${CR} ${C6}[${C2}download ${DOWNLOAD_SIZE}${C6}]${CR}"
     echo "${C6}│  ├─${CR} ${C1}apt_meta:${CR} ${C6}[${C2}held ${HELD_PACKAGES}${C6}]${CR} ${C6}[${C2}kernel ${KERNEL_UPDATES}${C6}]${CR} ${C6}[${C2}${REPO_OVERVIEW}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}apt_queue:${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR} ${C6}[${C2}autoremove ${AUTOREMOVE_COUNT}${C6}]${CR} ${C6}[${C2}full_extra ${FULL_UPGRADE_EXTRA}${C6}]${CR}"
 fi
 
-PENDING_SOURCE="unknown"
-case "$PKG_MANAGER" in
-    apt) PENDING_SOURCE="apt list --upgradable" ;;
-    pacman) PENDING_SOURCE="pacman -Qu / checkupdates" ;;
-    dnf) PENDING_SOURCE="dnf check-update" ;;
-    zypper) PENDING_SOURCE="zypper list-updates" ;;
-esac
+if [ "$TOTAL_UPDATES" -eq 0 ]; then
+    echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C3}NO_UPDATES${C6}]${CR}"
+else
+    PENDING_SOURCE="unknown"
+    case "$PKG_MANAGER" in
+        apt) PENDING_SOURCE="apt-get -s upgrade" ;;
+        pacman) PENDING_SOURCE="pacman -Qu / checkupdates" ;;
+        dnf) PENDING_SOURCE="dnf check-update" ;;
+        zypper) PENDING_SOURCE="zypper list-updates" ;;
+    esac
 
-echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}pending_updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending_updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending_status:${CR} ${C6}[${C6}UPDATES_AVAILABLE${C6}]${CR}"
 
-DETAIL_COUNT=0
-if [ "$TOTAL_UPDATES" -gt 0 ] && [ -s "$PKG_CACHE" ]; then
-    while IFS='|' read -r pkg oldv newv repo; do
-        [ -z "$pkg" ] && continue
-        DETAIL_COUNT=$((DETAIL_COUNT + 1))
+    DETAIL_COUNT=0
+    if [ -s "$PKG_CACHE" ]; then
+        while IFS='|' read -r pkg oldv newv repo; do
+            [ -z "$pkg" ] && continue
+            DETAIL_COUNT=$((DETAIL_COUNT + 1))
 
-        DETAIL_LINE="$pkg"
-        if [ -n "$oldv" ] && [ -n "$newv" ]; then
-            DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
-        fi
-        if [ -n "$repo" ]; then
-            DETAIL_LINE="${DETAIL_LINE} [${repo}]"
-        fi
+            DETAIL_LINE="$pkg"
+            if [ -n "$oldv" ] && [ -n "$newv" ]; then
+                DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
+            fi
+            if [ -n "$repo" ]; then
+                DETAIL_LINE="${DETAIL_LINE} [${repo}]"
+            fi
 
-        if [ "${#DETAIL_LINE}" -gt 72 ]; then
-            DETAIL_LINE="${DETAIL_LINE:0:69}..."
-        fi
+            if [ "${#DETAIL_LINE}" -gt 72 ]; then
+                DETAIL_LINE="${DETAIL_LINE:0:69}..."
+            fi
 
-        echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
-    done < <(head -n 3 "$PKG_CACHE")
-fi
+            echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
+        done < <(head -n "$PENDING_DETAIL_SLOTS" "$PKG_CACHE")
+    fi
 
-if [ "$TOTAL_UPDATES" -gt "$DETAIL_COUNT" ]; then
-    echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($TOTAL_UPDATES - $DETAIL_COUNT))${C6}]${CR}"
+    if [ "$TOTAL_UPDATES" -gt "$DETAIL_COUNT" ]; then
+        echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($TOTAL_UPDATES - $DETAIL_COUNT))${C6}]${CR}"
+    fi
 fi
 
 echo "${C6}└─${CR}"
