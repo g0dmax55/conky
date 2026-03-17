@@ -16,10 +16,18 @@ UDP_SLOTS=4
 LISTEN_SLOTS=14
 ROUTE_SLOTS=6
 CACHE_DIR="${CACHE_DIR:-/tmp/.g0dmax55_conky_netstat_radar}"
+NEW_ENTRY_TTL="${NEW_ENTRY_TTL:-3}"
+
+case "$NEW_ENTRY_TTL" in
+    ''|*[!0-9]*)
+        NEW_ENTRY_TTL=3
+        ;;
+esac
 
 # Empty slot line
 EMPTY="${C6}│  ├─${CR} ${C1}---${CR}"
 mkdir -p "$CACHE_DIR"
+NOW_TS=$(date +%s)
 
 pad_remaining_lines() {
     local count=$1
@@ -31,11 +39,26 @@ pad_remaining_lines() {
     done
 }
 
-is_new_entry() {
+load_entry_cache() {
     local cache_file=$1
-    local key=$2
+    local -n cache_ref=$2
+    local first_field key
 
-    [ -s "$cache_file" ] && ! grep -Fqx -- "$key" "$cache_file"
+    [ -s "$cache_file" ] || return 0
+
+    while IFS=$'\t' read -r first_field key; do
+        if [[ "$first_field" =~ ^[0-9]+$ ]] && [ -n "$key" ]; then
+            cache_ref["$key"]="$first_field"
+        elif [ -n "$first_field" ]; then
+            # Migrate older key-only caches without forcing every row red again.
+            cache_ref["$first_field"]=0
+        fi
+    done < "$cache_file"
+}
+
+is_recent_entry() {
+    local seen_at=$1
+    [ $((NOW_TS - seen_at)) -lt "$NEW_ENTRY_TTL" ]
 }
 
 format_route_line() {
@@ -157,13 +180,16 @@ render_routing_section() {
     local cache_file="$CACHE_DIR/routing.cache"
     local tmp_cache="${cache_file}.$$"
     local count=0
-    local dest gateway iface key
+    local dest gateway iface key seen_at
+    local -A cached_entries=()
 
+    load_entry_cache "$cache_file" cached_entries
     : > "$tmp_cache"
     while IFS=$'\t' read -r dest gateway iface; do
         key="${dest}|${gateway}|${iface}"
-        printf '%s\n' "$key" >> "$tmp_cache"
-        if is_new_entry "$cache_file" "$key"; then
+        seen_at=${cached_entries["$key"]:-$NOW_TS}
+        printf '%s\t%s\n' "$seen_at" "$key" >> "$tmp_cache"
+        if is_recent_entry "$seen_at"; then
             format_route_line "$dest" "$gateway" "$iface" "$C6" "$C1"
         else
             format_route_line "$dest" "$gateway" "$iface" "$C2" "$C6"
@@ -179,13 +205,16 @@ render_active_connections() {
     local cache_file="$CACHE_DIR/active.cache"
     local tmp_cache="${cache_file}.$$"
     local count=0
-    local proto recvq sendq local_addr foreign_addr state key
+    local proto recvq sendq local_addr foreign_addr state key seen_at
+    local -A cached_entries=()
 
+    load_entry_cache "$cache_file" cached_entries
     : > "$tmp_cache"
     while IFS=$'\t' read -r proto recvq sendq local_addr foreign_addr state; do
         key="${proto}|${local_addr}|${foreign_addr}|${state}"
-        printf '%s\n' "$key" >> "$tmp_cache"
-        if is_new_entry "$cache_file" "$key"; then
+        seen_at=${cached_entries["$key"]:-$NOW_TS}
+        printf '%s\t%s\n' "$seen_at" "$key" >> "$tmp_cache"
+        if is_recent_entry "$seen_at"; then
             format_active_line "$proto" "$recvq" "$sendq" "$local_addr" "$foreign_addr" "$state" "$C6" "$C6" "$C1"
         else
             format_active_line "$proto" "$recvq" "$sendq" "$local_addr" "$foreign_addr" "$state" "$C2" "$C1" "$C6"
@@ -201,13 +230,16 @@ render_udp_connections() {
     local cache_file="$CACHE_DIR/udp.cache"
     local tmp_cache="${cache_file}.$$"
     local count=0
-    local proto recvq sendq local_addr foreign_addr state key
+    local proto recvq sendq local_addr foreign_addr state key seen_at
+    local -A cached_entries=()
 
+    load_entry_cache "$cache_file" cached_entries
     : > "$tmp_cache"
     while IFS=$'\t' read -r proto recvq sendq local_addr foreign_addr state; do
         key="${proto}|${local_addr}|${foreign_addr}|${state}"
-        printf '%s\n' "$key" >> "$tmp_cache"
-        if is_new_entry "$cache_file" "$key"; then
+        seen_at=${cached_entries["$key"]:-$NOW_TS}
+        printf '%s\t%s\n' "$seen_at" "$key" >> "$tmp_cache"
+        if is_recent_entry "$seen_at"; then
             format_udp_line "$proto" "$recvq" "$sendq" "$local_addr" "$foreign_addr" "$state" "$C6" "$C6" "$C1"
         else
             format_udp_line "$proto" "$recvq" "$sendq" "$local_addr" "$foreign_addr" "$state" "$C2" "$C1" "$C6"
@@ -223,13 +255,16 @@ render_listening_section() {
     local cache_file="$CACHE_DIR/listening.cache"
     local tmp_cache="${cache_file}.$$"
     local count=0
-    local proto port addr prog key
+    local proto port addr prog key seen_at
+    local -A cached_entries=()
 
+    load_entry_cache "$cache_file" cached_entries
     : > "$tmp_cache"
     while IFS=$'\t' read -r proto port addr prog; do
         key="${proto}|${port}|${addr}|${prog}"
-        printf '%s\n' "$key" >> "$tmp_cache"
-        if is_new_entry "$cache_file" "$key"; then
+        seen_at=${cached_entries["$key"]:-$NOW_TS}
+        printf '%s\t%s\n' "$seen_at" "$key" >> "$tmp_cache"
+        if is_recent_entry "$seen_at"; then
             format_listening_line "$proto" "$port" "$addr" "$prog" "$C6" "$C6" "$C1"
         else
             format_listening_line "$proto" "$port" "$addr" "$prog" "$C2" "$C1" "$C6"
