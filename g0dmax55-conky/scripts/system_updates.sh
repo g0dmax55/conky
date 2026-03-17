@@ -167,8 +167,8 @@ refresh_cache() {
     local last_upgrade last_check package_lines raw
     local held_packages kernel_updates last_sync download_size repo_overview
     local kept_back_updates autoremove_count full_upgrade_extra
-    local apt_need_line apt_stamp_file apt_sim apt_full_sim apt_upgradable_count upgrade_ready_count
-    local apt_auto_list full_upgrade_updates
+    local apt_need_line apt_stamp_file apt_sim apt_full_sim upgrade_ready_count
+    local apt_auto_list full_upgrade_updates apt_upgrade_names
     local latest_list_file
 
     pkg_mgr="$(detect_package_manager)"
@@ -194,13 +194,13 @@ refresh_cache() {
             apt_sim="$(LC_ALL=C timeout 12s apt-get -s upgrade 2>/dev/null)"
             apt_full_sim="$(LC_ALL=C timeout 12s apt-get -s full-upgrade 2>/dev/null)"
 
-            apt_upgradable_count="$(printf "%s\n" "$raw" | sed '/^[[:space:]]*$/d' | wc -l)"
-            total_updates="${apt_upgradable_count:-0}"
             kept_back_updates="$(printf "%s\n" "$apt_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $(NF-2); exit}')"
             [ -z "$kept_back_updates" ] && kept_back_updates=0
 
             upgrade_ready_count="$(printf "%s\n" "$apt_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $1; exit}')"
             [ -z "$upgrade_ready_count" ] && upgrade_ready_count=0
+            # Track only packages that a regular "apt upgrade" would install.
+            total_updates="${upgrade_ready_count:-0}"
 
             full_upgrade_updates="$(printf "%s\n" "$apt_full_sim" | awk '/^[0-9]+ upgraded, [0-9]+ newly installed, [0-9]+ to remove and [0-9]+ not upgraded\./ {print $1; exit}')"
             [ -z "$full_upgrade_updates" ] && full_upgrade_updates="$upgrade_ready_count"
@@ -215,19 +215,35 @@ refresh_cache() {
             ')"
             autoremove_count=$(printf "%s\n" "$apt_auto_list" | awk '{for (i=1; i<=NF; i++) c++} END{print c+0}')
 
-            package_lines="$(printf "%s\n" "$raw" | awk '
-                /upgradable from:/ {
-                    pkgrepo=$1
-                    newv=$2
-                    split(pkgrepo, a, "/")
-                    pkg=a[1]
-                    repo=a[2]
-                    old=$0
-                    sub(/.*upgradable from: /, "", old)
-                    sub(/\].*/, "", old)
-                    printf "%s|%s|%s|%s\n", pkg, old, newv, repo
-                }
-            ' | head -n "$PACKAGE_SLOTS")"
+            apt_upgrade_names="$(printf "%s\n" "$apt_sim" | awk '/^Inst / {print $2}')"
+            if [ "$total_updates" -gt 0 ] && [ -n "$apt_upgrade_names" ]; then
+                package_lines="$(awk '
+                    FNR == NR {
+                        if ($1 != "") {
+                            wanted[$1] = 1
+                        }
+                        next
+                    }
+                    /upgradable from:/ {
+                        pkgrepo=$1
+                        newv=$2
+                        split(pkgrepo, a, "/")
+                        pkg=a[1]
+                        repo=a[2]
+
+                        if (!(pkg in wanted)) {
+                            next
+                        }
+
+                        old=$0
+                        sub(/.*upgradable from: /, "", old)
+                        sub(/\].*/, "", old)
+                        printf "%s|%s|%s|%s\n", pkg, old, newv, repo
+                    }
+                ' <(printf "%s\n" "$apt_upgrade_names") <(printf "%s\n" "$raw") | head -n "$PACKAGE_SLOTS")"
+            else
+                package_lines=""
+            fi
             last_upgrade="$(awk -F': ' '/^End-Date:/ {d=$2} END {if (d) print d; else print "--"}' /var/log/apt/history.log 2>/dev/null)"
             held_packages=$(timeout 6s apt-mark showhold 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l)
             kernel_updates=$(printf "%s\n" "$package_lines" | awk -F'|' '
@@ -376,7 +392,11 @@ if [ "$PKG_MANAGER" = "apt" ]; then
 fi
 
 if [ "$TOTAL_UPDATES" -eq 0 ]; then
-    echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C3}NO_UPDATES${C6}]${CR}"
+    if [ "$PKG_MANAGER" = "apt" ] && [ "$KEPT_BACK_UPDATES" -gt 0 ]; then
+        echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C2}KEPT_BACK_ONLY${C6}]${CR}"
+    else
+        echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C3}NO_UPDATES${C6}]${CR}"
+    fi
 else
     PENDING_SOURCE="unknown"
     case "$PKG_MANAGER" in
