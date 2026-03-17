@@ -22,6 +22,8 @@ conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netstatrc &
 sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-system-updatesrc &
 sleep 1
+conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-versionsrc &
+sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-marketsrc &
 sleep 1
 conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-sshrc &
