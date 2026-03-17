@@ -88,7 +88,7 @@ format_listening_line() {
     local text_color=$6
     local bracket_color=$7
 
-    printf "${C6}│  ├─${CR} ${bracket_color}[${value_color}%-4s${bracket_color}]${CR} ${bracket_color}[${value_color}%5s${bracket_color}]${CR} ${bracket_color}[${value_color}%-15s${bracket_color}]${CR} ${bracket_color}[${text_color}%s${bracket_color}]${CR}\n" \
+    printf "${C6}│  ├─${CR} ${bracket_color}[${value_color}%-4s${bracket_color}]${CR} ${bracket_color}[${value_color}%5s${bracket_color}]${CR} ${bracket_color}[${value_color}%-25.25s${bracket_color}]${CR} ${bracket_color}[${text_color}%s${bracket_color}]${CR}\n" \
         "$proto" "$port" "$addr" "$prog"
 }
 
@@ -271,7 +271,7 @@ echo "${C6}│${CR}"
 
 # 5. LISTENING_PORTS
 echo "${C6}├─${CR} ${C6}[${C2}LISTENING_PORTS${C6}]${CR}"
-printf "${C6}│  ├─${CR} ${C1}%-6s %-7s %-17s %s${CR}\n" "Proto" "Port" "Address" "Program"
+printf "${C6}│  ├─${CR} ${C1}%-6s %-7s %-27s %s${CR}\n" "Proto" "Port" "Address" "Program"
 render_listening_section
 
 echo "${C6}└─${CR}"
