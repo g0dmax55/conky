@@ -378,6 +378,23 @@ if [ "$PKG_MANAGER" = "apt" ] && [ "$TOTAL_UPDATES" -gt 0 ] && [ -s "$PKG_CACHE"
     fi
 fi
 
+PENDING_TOTAL=$((TOTAL_UPDATES + FLATPAK_UPDATES + SNAP_UPDATES))
+PENDING_SCOPE=""
+
+if [ "$TOTAL_UPDATES" -gt 0 ]; then
+    PENDING_SCOPE="apt ${TOTAL_UPDATES}"
+fi
+
+if [ "$FLATPAK_UPDATES" -gt 0 ]; then
+    [ -n "$PENDING_SCOPE" ] && PENDING_SCOPE="${PENDING_SCOPE}, "
+    PENDING_SCOPE="${PENDING_SCOPE}flatpak ${FLATPAK_UPDATES}"
+fi
+
+if [ "$SNAP_UPDATES" -gt 0 ]; then
+    [ -n "$PENDING_SCOPE" ] && PENDING_SCOPE="${PENDING_SCOPE}, "
+    PENDING_SCOPE="${PENDING_SCOPE}snap ${SNAP_UPDATES}"
+fi
+
 echo "${C6}├─${CR} ${C6}[${C2}SYSTEM_UPDATES${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${PKG_MANAGER^^}${C6}]${CR} ${C6}[${C2}${LAST_CHECK}${C6}]${CR}"
 echo "${C6}│  ├─${CR} ${C1}updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
 echo "${C6}│  ├─${CR} ${C1}security:${CR} ${C6}[${C2}${SECURITY_UPDATES}${C6}]${CR}"
@@ -391,49 +408,52 @@ if [ "$PKG_MANAGER" = "apt" ]; then
     echo "${C6}│  ├─${CR} ${C1}apt_queue:${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR} ${C6}[${C2}autoremove ${AUTOREMOVE_COUNT}${C6}]${CR} ${C6}[${C2}full_extra ${FULL_UPGRADE_EXTRA}${C6}]${CR}"
 fi
 
-if [ "$TOTAL_UPDATES" -eq 0 ]; then
+if [ "$PENDING_TOTAL" -eq 0 ]; then
+    echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C3}NO_UPDATES${C6}]${CR}"
     if [ "$PKG_MANAGER" = "apt" ] && [ "$KEPT_BACK_UPDATES" -gt 0 ]; then
-        echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C2}KEPT_BACK_ONLY${C6}]${CR}"
-    else
-        echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C3}NO_UPDATES${C6}]${CR}"
+        echo "${C6}│  ├─${CR} ${C1}deferred_apt:${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR}"
     fi
 else
-    PENDING_SOURCE="unknown"
-    case "$PKG_MANAGER" in
-        apt) PENDING_SOURCE="apt list --upgradable" ;;
-        pacman) PENDING_SOURCE="pacman -Qu / checkupdates" ;;
-        dnf) PENDING_SOURCE="dnf check-update" ;;
-        zypper) PENDING_SOURCE="zypper list-updates" ;;
-    esac
+    echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C6}UPDATES_AVAILABLE${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending_total:${CR} ${C6}[${C2}${PENDING_TOTAL}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending_scope:${CR} ${C6}[${C2}${PENDING_SCOPE}${C6}]${CR}"
 
-    echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}pending_updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}pending_status:${CR} ${C6}[${C6}UPDATES_AVAILABLE${C6}]${CR}"
+    if [ "$TOTAL_UPDATES" -gt 0 ]; then
+        PENDING_SOURCE="unknown"
+        case "$PKG_MANAGER" in
+            apt) PENDING_SOURCE="apt list --upgradable" ;;
+            pacman) PENDING_SOURCE="pacman -Qu / checkupdates" ;;
+            dnf) PENDING_SOURCE="dnf check-update" ;;
+            zypper) PENDING_SOURCE="zypper list-updates" ;;
+        esac
 
-    DETAIL_COUNT=0
-    if [ -s "$PKG_CACHE" ]; then
-        while IFS='|' read -r pkg oldv newv repo; do
-            [ -z "$pkg" ] && continue
-            DETAIL_COUNT=$((DETAIL_COUNT + 1))
+        echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
 
-            DETAIL_LINE="$pkg"
-            if [ -n "$oldv" ] && [ -n "$newv" ]; then
-                DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
-            fi
-            if [ -n "$repo" ]; then
-                DETAIL_LINE="${DETAIL_LINE} [${repo}]"
-            fi
+        DETAIL_COUNT=0
+        if [ -s "$PKG_CACHE" ]; then
+            while IFS='|' read -r pkg oldv newv repo; do
+                [ -z "$pkg" ] && continue
+                DETAIL_COUNT=$((DETAIL_COUNT + 1))
 
-            if [ "${#DETAIL_LINE}" -gt 72 ]; then
-                DETAIL_LINE="${DETAIL_LINE:0:69}..."
-            fi
+                DETAIL_LINE="$pkg"
+                if [ -n "$oldv" ] && [ -n "$newv" ]; then
+                    DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
+                fi
+                if [ -n "$repo" ]; then
+                    DETAIL_LINE="${DETAIL_LINE} [${repo}]"
+                fi
 
-            echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
-        done < <(head -n "$PENDING_DETAIL_SLOTS" "$PKG_CACHE")
-    fi
+                if [ "${#DETAIL_LINE}" -gt 72 ]; then
+                    DETAIL_LINE="${DETAIL_LINE:0:69}..."
+                fi
 
-    if [ "$TOTAL_UPDATES" -gt "$DETAIL_COUNT" ]; then
-        echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($TOTAL_UPDATES - $DETAIL_COUNT))${C6}]${CR}"
+                echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
+            done < <(head -n "$PENDING_DETAIL_SLOTS" "$PKG_CACHE")
+        fi
+
+        if [ "$TOTAL_UPDATES" -gt "$DETAIL_COUNT" ]; then
+            echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($TOTAL_UPDATES - $DETAIL_COUNT))${C6}]${CR}"
+        fi
     fi
 fi
 
