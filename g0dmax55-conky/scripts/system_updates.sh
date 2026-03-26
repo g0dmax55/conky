@@ -70,6 +70,95 @@ private_apt_metadata_present() {
     ls "$APT_LISTS_DIR"/*_InRelease "$APT_LISTS_DIR"/*_Release >/dev/null 2>&1
 }
 
+pending_section_label() {
+    case "$1:$2" in
+        apt:security_updates) echo "SECURITY_UPDATES" ;;
+        apt:apt_related) echo "APT_RELATED" ;;
+        flatpak:flatpak_updates) echo "FLATPAK_UPDATES" ;;
+        snap:snap_updates) echo "SNAP_UPDATES" ;;
+        pacman:packages) echo "PACMAN_UPDATES" ;;
+        dnf:packages) echo "DNF_UPDATES" ;;
+        zypper:packages) echo "ZYPPER_UPDATES" ;;
+        *) echo "UPDATES" ;;
+    esac
+}
+
+pending_source_label() {
+    case "$1:$2" in
+        apt:security_updates) echo "apt-get -s upgrade [security]" ;;
+        apt:apt_related) echo "apt list --upgradable" ;;
+        flatpak:flatpak_updates) echo "flatpak remote-ls --updates" ;;
+        snap:snap_updates) echo "snap refresh --list" ;;
+        pacman:packages) echo "pacman -Qu / checkupdates" ;;
+        dnf:packages) echo "dnf check-update" ;;
+        zypper:packages) echo "zypper list-updates" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+pending_section_total() {
+    case "$1:$2" in
+        apt:security_updates) echo "${SECURITY_UPDATES:-0}" ;;
+        apt:apt_related) echo "${APT_PENDING_TOTAL:-0}" ;;
+        flatpak:flatpak_updates) echo "${FLATPAK_UPDATES:-0}" ;;
+        snap:snap_updates) echo "${SNAP_UPDATES:-0}" ;;
+        pacman:packages|dnf:packages|zypper:packages) echo "${TOTAL_UPDATES:-0}" ;;
+        *) echo "0" ;;
+    esac
+}
+
+emit_pending_details() {
+    local source="$1" section="$2" total="$3"
+    local detail_count=0 detail_line pkg_source pkg_section pkg oldv newv repo
+
+    if [ -s "$PKG_CACHE" ]; then
+        while IFS='|' read -r pkg_source pkg_section pkg oldv newv repo; do
+            [ "$pkg_source" = "$source" ] || continue
+            [ "$pkg_section" = "$section" ] || continue
+            [ -n "$pkg" ] || continue
+
+            detail_count=$((detail_count + 1))
+            detail_line="$pkg"
+
+            if [ -n "$oldv" ] && [ -n "$newv" ]; then
+                detail_line="${detail_line}: ${oldv} -> ${newv}"
+            elif [ -n "$newv" ]; then
+                detail_line="${detail_line}: ${newv}"
+            elif [ -n "$oldv" ]; then
+                detail_line="${detail_line}: ${oldv}"
+            fi
+
+            if [ -n "$repo" ]; then
+                detail_line="${detail_line} [${repo}]"
+            fi
+
+            if [ "${#detail_line}" -gt 72 ]; then
+                detail_line="${detail_line:0:69}..."
+            fi
+
+            echo "${C6}│  ├─${CR} ${C1}pending_${detail_count}:${CR} ${C6}[${C2}${detail_line}${C6}]${CR}"
+
+            [ "$detail_count" -ge "$PENDING_DETAIL_SLOTS" ] && break
+        done < "$PKG_CACHE"
+    fi
+
+    if [ "$detail_count" -eq 0 ]; then
+        echo "${C6}│  ├─${CR} ${C1}pending_1:${CR} ${C6}[${C2}details unavailable${C6}]${CR}"
+    fi
+
+    if [ "$total" -gt "$detail_count" ]; then
+        echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($total - $detail_count))${C6}]${CR}"
+    fi
+}
+
+count_color() {
+    if [ "${1:-0}" -gt 0 ] 2>/dev/null; then
+        echo "$C6"
+    else
+        echo "$C3"
+    fi
+}
+
 output_fixed_lines() {
     local total=$1
     local count=0
@@ -199,12 +288,12 @@ detect_package_manager() {
 
 refresh_cache() {
     local pkg_mgr total_updates security_updates flatpak_updates snap_updates reboot_required
-    local last_upgrade last_check package_lines raw
+    local last_upgrade last_check raw
     local held_packages kernel_updates last_sync download_size repo_overview
     local kept_back_updates autoremove_count full_upgrade_extra
     local apt_need_line apt_stamp_file apt_sim apt_full_sim upgrade_ready_count
     local apt_auto_list full_upgrade_updates cache_schema_version apt_upgradable_total
-    local latest_list_file
+    local latest_list_file security_packages flatpak_raw snap_raw pkg_cache_tmp status_cache_tmp
 
     pkg_mgr="$(detect_package_manager)"
     total_updates=0
@@ -213,7 +302,6 @@ refresh_cache() {
     snap_updates=0
     reboot_required="NO"
     last_upgrade="--"
-    package_lines=""
     held_packages=0
     kernel_updates=0
     last_sync="--"
@@ -222,6 +310,10 @@ refresh_cache() {
     kept_back_updates=0
     autoremove_count=0
     full_upgrade_extra=0
+    status_cache_tmp="${STATUS_CACHE}.$$"
+    pkg_cache_tmp="${PKG_CACHE}.$$"
+
+    : > "$pkg_cache_tmp"
 
     case "$pkg_mgr" in
         apt)
@@ -253,9 +345,36 @@ refresh_cache() {
                 in_auto {print}
             ')"
             autoremove_count=$(printf "%s\n" "$apt_auto_list" | awk '{for (i=1; i<=NF; i++) c++} END{print c+0}')
+            security_packages="$(printf "%s\n" "$apt_sim" | awk 'BEGIN{IGNORECASE=1} /^Inst / && /security/ {print $2}')"
 
             if [ "$apt_upgradable_total" -gt 0 ]; then
-                package_lines="$(printf "%s\n" "$raw" | awk '
+                if [ -n "$security_packages" ]; then
+                    printf "%s\n" "$raw" | awk -v security_packages="$security_packages" '
+                        BEGIN {
+                            split(security_packages, sec_list, "\n")
+                            for (i in sec_list) {
+                                if (sec_list[i] != "") {
+                                    security_pkg[sec_list[i]] = 1
+                                }
+                            }
+                        }
+                        /upgradable from:/ {
+                            pkgrepo=$1
+                            newv=$2
+                            split(pkgrepo, a, "/")
+                            pkg=a[1]
+                            repo=a[2]
+                            old=$0
+                            sub(/.*upgradable from: /, "", old)
+                            sub(/\].*/, "", old)
+                            if (security_pkg[pkg]) {
+                                printf "apt|security_updates|%s|%s|%s|%s\n", pkg, old, newv, repo
+                            }
+                        }
+                    ' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
+                fi
+
+                printf "%s\n" "$raw" | awk '
                     /upgradable from:/ {
                         pkgrepo=$1
                         newv=$2
@@ -265,11 +384,9 @@ refresh_cache() {
                         old=$0
                         sub(/.*upgradable from: /, "", old)
                         sub(/\].*/, "", old)
-                        printf "%s|%s|%s|%s\n", pkg, old, newv, repo
+                        printf "apt|apt_related|%s|%s|%s|%s\n", pkg, old, newv, repo
                     }
-                ' | head -n "$PACKAGE_SLOTS")"
-            else
-                package_lines=""
+                ' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
             fi
             last_upgrade="$(awk -F': ' '/^End-Date:/ {d=$2} END {if (d) print d; else print "--"}' /var/log/apt/history.log 2>/dev/null)"
             held_packages=$(timeout 6s apt-mark showhold 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l)
@@ -315,29 +432,64 @@ refresh_cache() {
                 raw="$(timeout 12s pacman -Qu 2>/dev/null)"
             fi
             total_updates=$(printf "%s\n" "$raw" | sed '/^[[:space:]]*$/d' | wc -l)
-            package_lines="$(printf "%s\n" "$raw" | awk 'NF {print $1}' | head -n "$PACKAGE_SLOTS")"
+            printf "%s\n" "$raw" | awk 'NF {printf "pacman|packages|%s|||\n", $1}' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
             ;;
         dnf)
             raw="$(timeout 12s dnf -q check-update 2>/dev/null | awk 'NF && $1 !~ /^Last/ && $1 !~ /^Obsoleting/ {print}')"
             total_updates=$(printf "%s\n" "$raw" | sed '/^[[:space:]]*$/d' | wc -l)
-            package_lines="$(printf "%s\n" "$raw" | awk 'NF {print $1}' | head -n "$PACKAGE_SLOTS")"
+            printf "%s\n" "$raw" | awk 'NF {printf "dnf|packages|%s|||\n", $1}' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
             ;;
         zypper)
             raw="$(timeout 12s zypper --non-interactive list-updates 2>/dev/null | awk '$1 ~ /^[v|]/ {print $5}')"
             total_updates=$(printf "%s\n" "$raw" | sed '/^[[:space:]]*$/d' | wc -l)
-            package_lines="$(printf "%s\n" "$raw" | head -n "$PACKAGE_SLOTS")"
-            ;;
-        *)
-            package_lines="Unsupported package manager"
+            printf "%s\n" "$raw" | awk 'NF {printf "zypper|packages|%s|||\n", $1}' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
             ;;
     esac
 
     if command -v flatpak >/dev/null 2>&1; then
-        flatpak_updates=$(timeout 10s flatpak remote-ls --updates --columns=application 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l)
+        flatpak_raw="$(timeout 10s flatpak remote-ls --updates --columns=application,name,version,branch,origin 2>/dev/null)"
+        flatpak_updates=$(printf "%s\n" "$flatpak_raw" | sed '/^[[:space:]]*$/d' | wc -l)
+        if [ "$flatpak_updates" -gt 0 ]; then
+            printf "%s\n" "$flatpak_raw" | awk 'BEGIN { FS="\t" } NF {
+                app=$1
+                name=$2
+                version=$3
+                branch=$4
+                origin=$5
+                pkg=name
+                if (pkg == "") {
+                    pkg=app
+                } else if (app != "" && app != name) {
+                    pkg=sprintf("%s (%s)", name, app)
+                }
+                detail=version
+                if (branch != "") {
+                    if (detail != "") {
+                        detail=detail " / " branch
+                    } else {
+                        detail=branch
+                    }
+                }
+                printf "flatpak|flatpak_updates|%s||%s|%s\n", pkg, detail, origin
+            }' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
+        fi
     fi
 
     if command -v snap >/dev/null 2>&1; then
-        snap_updates=$(timeout 10s snap refresh --list 2>/dev/null | awk 'NR > 1 && NF {c++} END{print c+0}')
+        snap_raw="$(timeout 10s snap refresh --list 2>/dev/null)"
+        snap_updates=$(printf "%s\n" "$snap_raw" | awk 'NR > 1 && NF {c++} END{print c+0}')
+        if [ "$snap_updates" -gt 0 ]; then
+            printf "%s\n" "$snap_raw" | awk 'NR > 1 && NF {
+                name=$1
+                version=$2
+                revision=$3
+                repo=""
+                if (revision != "") {
+                    repo="rev " revision
+                }
+                printf "snap|snap_updates|%s||%s|%s\n", name, version, repo
+            }' | head -n "$PACKAGE_SLOTS" >> "$pkg_cache_tmp"
+        fi
     fi
 
     if [ -f /var/run/reboot-required ]; then
@@ -351,11 +503,10 @@ refresh_cache() {
         "$pkg_mgr" "$total_updates" "$security_updates" "$flatpak_updates" \
         "$snap_updates" "$reboot_required" "$last_upgrade" "$last_check" \
         "$held_packages" "$kernel_updates" "$last_sync" "$download_size" "$repo_overview" \
-        "$kept_back_updates" "$autoremove_count" "$full_upgrade_extra" "$cache_schema_version" > "${STATUS_CACHE}.tmp"
-    mv "${STATUS_CACHE}.tmp" "$STATUS_CACHE"
+        "$kept_back_updates" "$autoremove_count" "$full_upgrade_extra" "$cache_schema_version" > "$status_cache_tmp"
+    mv "$status_cache_tmp" "$STATUS_CACHE"
 
-    printf "%s\n" "$package_lines" > "${PKG_CACHE}.tmp"
-    mv "${PKG_CACHE}.tmp" "$PKG_CACHE"
+    mv "$pkg_cache_tmp" "$PKG_CACHE"
 }
 
 maybe_schedule_apt_auto_sync
@@ -386,6 +537,10 @@ AUTOREMOVE_COUNT="0"
 FULL_UPGRADE_EXTRA="0"
 CACHE_SCHEMA_VERSION="$STATUS_CACHE_SCHEMA_VERSION"
 APT_PENDING_TOTAL="0"
+PRIMARY_UPDATES_TOTAL="0"
+PENDING_DETAIL_SOURCE=""
+PENDING_DETAIL_SECTION=""
+PENDING_DETAIL_TOTAL="0"
 
 IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW KEPT_BACK_UPDATES AUTOREMOVE_COUNT FULL_UPGRADE_EXTRA CACHE_SCHEMA_VERSION < "$STATUS_CACHE"
 
@@ -410,9 +565,10 @@ KEPT_BACK_UPDATES="${KEPT_BACK_UPDATES:-0}"
 AUTOREMOVE_COUNT="${AUTOREMOVE_COUNT:-0}"
 FULL_UPGRADE_EXTRA="${FULL_UPGRADE_EXTRA:-0}"
 
-# Cache format migration: older cache had package names only.
-if [ "$PKG_MANAGER" = "apt" ] && [ -s "$PKG_CACHE" ]; then
-    if ! head -n 1 "$PKG_CACHE" | grep -q '|'; then
+# Cache format migration: older cache stored package lines without source/section fields.
+if [ -s "$PKG_CACHE" ]; then
+    PKG_PIPE_COUNT=$(head -n 1 "$PKG_CACHE" 2>/dev/null | tr -cd '|' | wc -c)
+    if [ "$PKG_PIPE_COUNT" -lt 5 ]; then
         refresh_cache
         IFS='|' read -r PKG_MANAGER TOTAL_UPDATES SECURITY_UPDATES FLATPAK_UPDATES SNAP_UPDATES REBOOT_REQUIRED LAST_UPGRADE LAST_CHECK HELD_PACKAGES KERNEL_UPDATES LAST_SYNC DOWNLOAD_SIZE REPO_OVERVIEW KEPT_BACK_UPDATES AUTOREMOVE_COUNT FULL_UPGRADE_EXTRA CACHE_SCHEMA_VERSION < "$STATUS_CACHE"
     fi
@@ -420,19 +576,27 @@ fi
 
 if [ "$PKG_MANAGER" = "apt" ]; then
     APT_PENDING_TOTAL=$((TOTAL_UPDATES + KEPT_BACK_UPDATES))
+    PRIMARY_UPDATES_TOTAL="$APT_PENDING_TOTAL"
+else
+    PRIMARY_UPDATES_TOTAL="$TOTAL_UPDATES"
 fi
 
-PENDING_TOTAL=$((APT_PENDING_TOTAL + FLATPAK_UPDATES + SNAP_UPDATES))
+PENDING_TOTAL=$((PRIMARY_UPDATES_TOTAL + FLATPAK_UPDATES + SNAP_UPDATES))
 PENDING_SCOPE=""
+APT_COLOR="$(count_color "$TOTAL_UPDATES")"
+SECURITY_COLOR="$(count_color "$SECURITY_UPDATES")"
+FLATPAK_COLOR="$(count_color "$FLATPAK_UPDATES")"
+SNAP_COLOR="$(count_color "$SNAP_UPDATES")"
+PENDING_COLOR="$(count_color "$PENDING_TOTAL")"
 
 if [ "$PKG_MANAGER" = "apt" ] && [ "$TOTAL_UPDATES" -gt 0 ]; then
     PENDING_SCOPE="apt ${TOTAL_UPDATES}"
+elif [ "$PKG_MANAGER" != "apt" ] && [ "$PRIMARY_UPDATES_TOTAL" -gt 0 ]; then
+    PENDING_SCOPE="${PKG_MANAGER} ${PRIMARY_UPDATES_TOTAL}"
 fi
 
 if [ "$PKG_MANAGER" = "apt" ] && [ "$KEPT_BACK_UPDATES" -gt 0 ]; then
-    if [ -n "$PENDING_SCOPE" ]; then
-        PENDING_SCOPE="${PENDING_SCOPE}, "
-    fi
+    [ -n "$PENDING_SCOPE" ] && PENDING_SCOPE="${PENDING_SCOPE}, "
     PENDING_SCOPE="${PENDING_SCOPE}kept_back ${KEPT_BACK_UPDATES}"
 fi
 
@@ -446,17 +610,33 @@ if [ "$SNAP_UPDATES" -gt 0 ]; then
     PENDING_SCOPE="${PENDING_SCOPE}snap ${SNAP_UPDATES}"
 fi
 
+if [ "$SECURITY_UPDATES" -gt 0 ]; then
+    PENDING_DETAIL_SOURCE="apt"
+    PENDING_DETAIL_SECTION="security_updates"
+elif [ "$PKG_MANAGER" = "apt" ] && [ "$APT_PENDING_TOTAL" -gt 0 ]; then
+    PENDING_DETAIL_SOURCE="apt"
+    PENDING_DETAIL_SECTION="apt_related"
+elif [ "$PRIMARY_UPDATES_TOTAL" -gt 0 ] && [ "$PKG_MANAGER" != "none" ]; then
+    PENDING_DETAIL_SOURCE="$PKG_MANAGER"
+    PENDING_DETAIL_SECTION="packages"
+elif [ "$FLATPAK_UPDATES" -gt 0 ]; then
+    PENDING_DETAIL_SOURCE="flatpak"
+    PENDING_DETAIL_SECTION="flatpak_updates"
+elif [ "$SNAP_UPDATES" -gt 0 ]; then
+    PENDING_DETAIL_SOURCE="snap"
+    PENDING_DETAIL_SECTION="snap_updates"
+fi
+
+if [ -n "$PENDING_DETAIL_SOURCE" ] && [ -n "$PENDING_DETAIL_SECTION" ]; then
+    PENDING_DETAIL_TOTAL="$(pending_section_total "$PENDING_DETAIL_SOURCE" "$PENDING_DETAIL_SECTION")"
+fi
+
 echo "${C6}├─${CR} ${C6}[${C2}SYSTEM_UPDATES${C6}]${CR} ${C1}::${CR} ${C6}[${C2}${PKG_MANAGER^^}${C6}]${CR} ${C6}[${C2}${LAST_CHECK}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}updates:${CR} ${C6}[${C2}${TOTAL_UPDATES}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}security:${CR} ${C6}[${C2}${SECURITY_UPDATES}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}flatpak:${CR} ${C6}[${C2}${FLATPAK_UPDATES}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}snap:${CR} ${C6}[${C2}${SNAP_UPDATES}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}reboot_required:${CR} ${C6}[${C2}${REBOOT_REQUIRED}${C6}]${CR}"
-echo "${C6}│  ├─${CR} ${C1}last_upgrade:${CR} ${C6}[${C2}${LAST_UPGRADE}${C6}]${CR}"
+echo "${C6}│  ├─${CR} ${C1}summary:${CR} ${C6}[${APT_COLOR}apt ${TOTAL_UPDATES}${C6}]${CR} ${C6}[${SECURITY_COLOR}sec ${SECURITY_UPDATES}${C6}]${CR} ${C6}[${FLATPAK_COLOR}flatpak ${FLATPAK_UPDATES}${C6}]${CR} ${C6}[${SNAP_COLOR}snap ${SNAP_UPDATES}${C6}]${CR}"
+echo "${C6}│  ├─${CR} ${C1}system:${CR} ${C6}[${C2}reboot ${REBOOT_REQUIRED}${C6}]${CR} ${C6}[${C2}upgrade ${LAST_UPGRADE}${C6}]${CR}"
 if [ "$PKG_MANAGER" = "apt" ]; then
-    echo "${C6}│  ├─${CR} ${C1}apt_sync:${CR} ${C6}[${C2}${LAST_SYNC}${C6}]${CR} ${C6}[${C2}download ${DOWNLOAD_SIZE}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}apt_meta:${CR} ${C6}[${C2}held ${HELD_PACKAGES}${C6}]${CR} ${C6}[${C2}kernel ${KERNEL_UPDATES}${C6}]${CR} ${C6}[${C2}${REPO_OVERVIEW}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}apt_queue:${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR} ${C6}[${C2}autoremove ${AUTOREMOVE_COUNT}${C6}]${CR} ${C6}[${C2}full_extra ${FULL_UPGRADE_EXTRA}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}apt_state:${CR} ${C6}[${C2}sync ${LAST_SYNC}${C6}]${CR} ${C6}[${C2}dl ${DOWNLOAD_SIZE}${C6}]${CR} ${C6}[${C2}repo ${REPO_OVERVIEW}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}apt_queue:${CR} ${C6}[${C2}held ${HELD_PACKAGES}${C6}]${CR} ${C6}[${C2}kernel ${KERNEL_UPDATES}${C6}]${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR} ${C6}[${C2}auto ${AUTOREMOVE_COUNT}${C6}]${CR}"
 fi
 
 if [ "$PENDING_TOTAL" -eq 0 ]; then
@@ -467,79 +647,11 @@ else
         STATUS_LABEL="KEPT_BACK_ONLY"
     fi
 
-    echo "${C6}│  ├─${CR} ${C1}status:${CR} ${C6}[${C6}${STATUS_LABEL}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}pending_total:${CR} ${C6}[${C2}${PENDING_TOTAL}${C6}]${CR}"
-    echo "${C6}│  ├─${CR} ${C1}pending_scope:${CR} ${C6}[${C2}${PENDING_SCOPE}${C6}]${CR}"
+    echo "${C6}│  ├─${CR} ${C1}pending:${CR} ${C6}[${PENDING_COLOR}${STATUS_LABEL}${C6}]${CR} ${C6}[${PENDING_COLOR}total ${PENDING_TOTAL}${C6}]${CR} ${C6}[${PENDING_COLOR}${PENDING_SCOPE}${C6}]${CR}"
 
-    if [ "$PKG_MANAGER" = "apt" ] && [ "$KEPT_BACK_UPDATES" -gt 0 ]; then
-        echo "${C6}│  ├─${CR} ${C1}deferred_apt:${CR} ${C6}[${C2}kept_back ${KEPT_BACK_UPDATES}${C6}]${CR}"
-    fi
-
-    if [ "$PKG_MANAGER" = "apt" ] && [ "$APT_PENDING_TOTAL" -gt 0 ]; then
-        PENDING_SOURCE="apt list --upgradable"
-        echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
-
-        DETAIL_COUNT=0
-        if [ -s "$PKG_CACHE" ]; then
-            while IFS='|' read -r pkg oldv newv repo; do
-                [ -z "$pkg" ] && continue
-                DETAIL_COUNT=$((DETAIL_COUNT + 1))
-
-                DETAIL_LINE="$pkg"
-                if [ -n "$oldv" ] && [ -n "$newv" ]; then
-                    DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
-                fi
-                if [ -n "$repo" ]; then
-                    DETAIL_LINE="${DETAIL_LINE} [${repo}]"
-                fi
-
-                if [ "${#DETAIL_LINE}" -gt 72 ]; then
-                    DETAIL_LINE="${DETAIL_LINE:0:69}..."
-                fi
-
-                echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
-            done < <(head -n "$PENDING_DETAIL_SLOTS" "$PKG_CACHE")
-        fi
-
-        if [ "$APT_PENDING_TOTAL" -gt "$DETAIL_COUNT" ]; then
-            echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($APT_PENDING_TOTAL - $DETAIL_COUNT))${C6}]${CR}"
-        fi
-    elif [ "$TOTAL_UPDATES" -gt 0 ]; then
-        PENDING_SOURCE="unknown"
-        case "$PKG_MANAGER" in
-            apt) PENDING_SOURCE="apt list --upgradable" ;;
-            pacman) PENDING_SOURCE="pacman -Qu / checkupdates" ;;
-            dnf) PENDING_SOURCE="dnf check-update" ;;
-            zypper) PENDING_SOURCE="zypper list-updates" ;;
-        esac
-
-        echo "${C6}│  ├─${CR} ${C1}pending_source:${CR} ${C6}[${C2}${PENDING_SOURCE}${C6}]${CR}"
-
-        DETAIL_COUNT=0
-        if [ -s "$PKG_CACHE" ]; then
-            while IFS='|' read -r pkg oldv newv repo; do
-                [ -z "$pkg" ] && continue
-                DETAIL_COUNT=$((DETAIL_COUNT + 1))
-
-                DETAIL_LINE="$pkg"
-                if [ -n "$oldv" ] && [ -n "$newv" ]; then
-                    DETAIL_LINE="${DETAIL_LINE}: ${oldv} -> ${newv}"
-                fi
-                if [ -n "$repo" ]; then
-                    DETAIL_LINE="${DETAIL_LINE} [${repo}]"
-                fi
-
-                if [ "${#DETAIL_LINE}" -gt 72 ]; then
-                    DETAIL_LINE="${DETAIL_LINE:0:69}..."
-                fi
-
-                echo "${C6}│  ├─${CR} ${C1}pending_${DETAIL_COUNT}:${CR} ${C6}[${C2}${DETAIL_LINE}${C6}]${CR}"
-            done < <(head -n "$PENDING_DETAIL_SLOTS" "$PKG_CACHE")
-        fi
-
-        if [ "$TOTAL_UPDATES" -gt "$DETAIL_COUNT" ]; then
-            echo "${C6}│  ├─${CR} ${C1}pending_more:${CR} ${C6}[${C2}+$(($TOTAL_UPDATES - $DETAIL_COUNT))${C6}]${CR}"
-        fi
+    if [ -n "$PENDING_DETAIL_SOURCE" ] && [ -n "$PENDING_DETAIL_SECTION" ] && [ "$PENDING_DETAIL_TOTAL" -gt 0 ]; then
+        echo "${C6}│  ├─${CR} ${C1}pending_from:${CR} ${C6}[${PENDING_COLOR}$(pending_section_label "$PENDING_DETAIL_SOURCE" "$PENDING_DETAIL_SECTION")${C6}]${CR} ${C6}[${PENDING_COLOR}$(pending_source_label "$PENDING_DETAIL_SOURCE" "$PENDING_DETAIL_SECTION")${C6}]${CR}"
+        emit_pending_details "$PENDING_DETAIL_SOURCE" "$PENDING_DETAIL_SECTION" "$PENDING_DETAIL_TOTAL"
     fi
 fi
 
