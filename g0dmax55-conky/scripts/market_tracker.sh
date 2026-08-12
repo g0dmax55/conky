@@ -194,33 +194,24 @@ fetch_google_finance() {
         fi
     fi
     
-    # Fetch from Google Finance
-    local page=$(curl -s --max-time 15 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "https://www.google.com/finance/quote/${symbol}" 2>/dev/null)
+    # Fetch from Google Finance (updated UA - old Chrome 91 gets blocked)
+    local page=$(curl -s --max-time 15 -L -A "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" "https://www.google.com/finance/quote/${symbol}" 2>/dev/null)
     
-    # Extract using HTML classes (Google Finance changed structure)
-    # Price is in <div class="YMlKec fxKbKc">
-    local price_raw=$(echo "$page" | grep -oP '<div class="YMlKec fxKbKc">\K[^<]+' | head -1)
-    local price=$(echo "$price_raw" | tr -d ',')
+    # Extract price from the main quote section
+    # The primary price is inside: <div class="N6SYTe"><span jsname="Pdsbrc"><span>PRICE</span>
+    # For stocks it includes ₹ prefix, for indices it's just a number
+    local price_raw=$(echo "$page" | grep -oP 'N6SYTe">\s*<span jsname="Pdsbrc"[^>]*><span>[^<]+' | head -1 | grep -oP '<span>[^<]+$' | sed 's/<span>//')
+    local price=$(echo "$price_raw" | tr -d ',₹ ')
     
-    # Change/Percent is in subsequent aria-label, e.g. aria-label="Down by 0.47%"
-    # We use price_raw as anchor because it appears multiple times but correct one is followed by label
-    # Updated Regex: Search for label containing '%' to avoid "Key events" label in stocks
-    local label=""
-    if [ -n "$price_raw" ]; then
-        # Escape special chars in price for regex
-        local price_esc=$(echo "$price_raw" | sed 's/[.[\*^$]/\\&/g')
-        label=$(echo "$page" | grep -oP "${price_esc}.*?aria-label=\"\K[^\"]*?[0-9.]+%[^\"]*" | head -1)
-    fi
-    
-    local pct=$(echo "$label" | grep -oE '[0-9.]+' | head -1)
+    # Extract percentage change from the main quote section
+    # Positive change: <span class="ougHge">+X.XX%</span>
+    # Negative change: <span class="ymyBi">-X.XX%</span>
+    # The first occurrence after N6SYTe is the main quote's change
+    local pct_raw=$(echo "$page" | grep -oP 'N6SYTe".*?class="(ougHge|ymyBi)">\K[^<]+' | head -1)
+    local pct=$(echo "$pct_raw" | grep -oE '[+-]?[0-9.]+' | head -1)
     
     # Add delay to avoid rate limiting
     sleep 1.5
-    
-    # Determine sign from label text
-    if echo "$label" | grep -q "Down"; then
-        pct="-${pct}"
-    fi
 
     local change="0" # Absolute change not displayed, so 0 is fine
     
@@ -233,6 +224,7 @@ fetch_google_finance() {
         echo ""
     fi
 }
+
 
 # NIFTY 50
 NIFTY=$(fetch_google_finance "NIFTY_50:INDEXNSE")
