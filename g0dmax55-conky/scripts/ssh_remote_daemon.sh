@@ -4,7 +4,9 @@
 # SSH Server Configuration — loaded from .ssh_env
 # ==========================================
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/.ssh_env"
+if [ -f "$SCRIPT_DIR/.ssh_env" ]; then
+    source "$SCRIPT_DIR/.ssh_env"
+fi
 UPDATE_INTERVAL=1             # How often to check in seconds
 # ==========================================
 
@@ -13,15 +15,39 @@ CACHE_RX="/tmp/.g0dmax55_conky_remote_ssh_rx_rate"
 CACHE_TX="/tmp/.g0dmax55_conky_remote_ssh_tx_rate"
 CACHE_STATUS="/tmp/.g0dmax55_conky_remote_ssh_status"
 
+init_cache() {
+    echo "OFFLINE" > "$CACHE_STATUS"
+    echo "0" > "$CACHE_RX"
+    echo "0" > "$CACHE_TX"
+    echo "0" > "${CACHE_RX}_rate"
+    echo "0" > "${CACHE_TX}_rate"
+    echo "0" > "${CACHE_RX}_total"
+    echo "0" > "${CACHE_TX}_total"
+}
+
 OLD_RX=0
 OLD_TX=0
 OLD_TIME=$(date +%s%3N)
 
 while true; do
+    # Reload environment if present
+    if [ -f "$SCRIPT_DIR/.ssh_env" ]; then
+        source "$SCRIPT_DIR/.ssh_env"
+    fi
+
+    # Check if server IP and username are configured
+    if [ -z "$SERVER_IP" ] || [ -z "$USERNAME" ]; then
+        init_cache
+        sleep 5
+        continue
+    fi
+
+    local_interface="${INTERFACE:-eth0}"
+
     # Open a persistent SSH stream to fetch statistics every second without re-authenticating
-    CMD="while true; do cat /sys/class/net/$INTERFACE/statistics/rx_bytes /sys/class/net/$INTERFACE/statistics/tx_bytes; sleep $UPDATE_INTERVAL; done"
+    CMD="while true; do cat /sys/class/net/$local_interface/statistics/rx_bytes /sys/class/net/$local_interface/statistics/tx_bytes; sleep $UPDATE_INTERVAL; done"
     
-    if command -v sshpass &>/dev/null; then
+    if [ -n "$PASSWORD" ] && command -v sshpass &>/dev/null; then
         EXEC_SSH=(sshpass -p "$PASSWORD" ssh -o ConnectTimeout=5 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP")
     else
         EXEC_SSH=(ssh -o ConnectTimeout=5 -o ServerAliveInterval=10 -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP")

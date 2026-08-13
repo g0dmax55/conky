@@ -40,5 +40,5 @@ conky.config = {
 }
 
 conky.text = [[
-${execpi 1 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/netstat_radar.sh}
+${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/netstat_radar.sh}
 ]]

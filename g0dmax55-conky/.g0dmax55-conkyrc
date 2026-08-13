@@ -3,7 +3,7 @@ conky.config = {
     use_xft = true,
     font = 'monospace:pixelsize=13',
     xftalpha = 1,
-    update_interval = 1,
+    update_interval = 2.0,
     total_run_times = 0,
     own_window = true,
     own_window_type = 'desktop',
@@ -42,7 +42,7 @@ conky.config = {
     color1 = '999999', -- Grey (Labels/Brackets/Rest)
     color2 = '00FFFF', -- Cyan (Numbers/Values/Bars)
     color6 = 'FF0000', -- Red (Tree Structure)
-    lua_load = '/home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/fan_bar.lua /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/amd_gpu.lua',
+    lua_load = '/home/g0dmax55/conky/g0dmax55-conky/scripts/fan_bar.lua /home/g0dmax55/conky/g0dmax55-conky/scripts/amd_gpu.lua',
 }
 
 conky.text = [[
@@ -52,7 +52,7 @@ ${alignr}${offset -10}${color6}[${color2}${execi 600 whoami}${color6}]${color} $
 ${alignr}${offset -10}${color6}[${color2}${execi 600 printenv XDG_CURRENT_DESKTOP | cut -d: -f1}${color6}]${color} ${color1}desktop${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}${execi 600 awk -F'"' '/^NAME=/ {print $2}' /etc/os-release}${color6}]${color} ${color6}[${color2}$machine${color6}]${color} ${color1}os/arch${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color6}[${color2}$uptime${color6}]${color} ${color1}uptime${color} ${color6}─┤${color}
-${if_up wlan0}${alignr}${offset -10}${color6}[${color2}${wireless_essid wlan0}${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/wlan0/address}${color6}]${color} ${color6}[${color2}${addr wlan0}${color6}]${color} ${color6}[${color2}${execi 600 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/get_public_ip.sh}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlan0}${color} ${color6}[${color2}${wireless_link_qual_perc wlan0}%${color6}]${color} ${color1}wifi${color} ${color6}─┤${color}${else}${alignr}${offset -10}${color6}[${color2}Wired Connection${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/eth0/address}${color6}]${color} ${color6}[${color2}${addr eth0}${color6}]${color} ${color6}[${color2}${execi 600 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/get_public_ip.sh}${color6}]${color} ${color1}ip${color} ${color6}[${color2}LINK${color6}]${color} ${color1}eth${color} ${color6}─┤${color}${endif}
+${if_up wlp3s0}${alignr}${offset -10}${color6}[${color2}${wireless_essid wlp3s0}${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/wlp3s0/address}${color6}]${color} ${color6}[${color2}${addr wlp3s0}${color6}]${color} ${color6}[${color2}${execi 600 /home/g0dmax55/conky/g0dmax55-conky/scripts/get_public_ip.sh}${color6}]${color} ${color1}ip${color} ${color2}${wireless_link_bar 5,50 wlp3s0}${color} ${color6}[${color2}${wireless_link_qual_perc wlp3s0}%${color6}]${color} ${color1}wifi${color} ${color6}─┤${color}${else}${alignr}${offset -10}${color6}[${color2}Wired Connection${color6}]${color} ${color6}[${color2}${execi 3600 cat /sys/class/net/enp2s0/address}${color6}]${color} ${color6}[${color2}${addr enp2s0}${color6}]${color} ${color6}[${color2}${execi 600 /home/g0dmax55/conky/g0dmax55-conky/scripts/get_public_ip.sh}${color6}]${color} ${color1}ip${color} ${color6}[${color2}LINK${color6}]${color} ${color1}eth${color} ${color6}─┤${color}${endif}
 ${alignr}${offset -10}${color6}│${color}
 ${alignr}${offset -10}${color1}system${color} ${color6}─┤${color}
 ${alignr}${offset -10}${color1}cpu${color} ${color6}─┤    │${color}
@@ -104,7 +104,7 @@ ${alignr}${offset -10}${color1}fan-speed${color} ${color6}─┘    │${color}
 ${alignr}${offset -10}${color2}${lua_bar 7,100 conky_fan_percent_1} ${color6}[${color2}${hwmon asus fan 1} RPM${color6}]${color} ${color1}cpu${color} ${color6}─┤         │${color}
 ${alignr}${offset -10}${color2}${lua_bar 7,100 conky_fan_percent_2} ${color6}[${color2}${hwmon asus fan 2} RPM${color6}]${color} ${color1}gpu${color} ${color6}─┘         │${color}
 ${alignr}${offset -10}${color1}resources${color} ${color6}─┤${color}
-${alignr}${offset -10}${color6}[${color1}r${color} ${color2}$diskio_read${color6}]${color} ${color6}[${color1}w${color} ${color2}$diskio_write${color6}]${color} ${color6}[${color1}Int${color} ${color2}${hwmon 2 temp 1}°C${color}/${color1}WD${color} ${color2}${hwmon 3 temp 1}°C${color6}]${color} ${color1}nvme${color} ${color6}─┤    │${color}
+${alignr}${offset -10}${color6}[${color1}r${color} ${color2}$diskio_read${color6}]${color} ${color6}[${color1}w${color} ${color2}$diskio_write${color6}]${color} ${color6}[${color1}Int${color} ${color2}${hwmon 3 temp 1}°C${color}/${color1}WD${color} ${color2}${hwmon 4 temp 1}°C${color6}]${color} ${color1}nvme${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color6}[${color1}boot${color} ${color2}${fs_used_perc /boot}%${color} ${color2}${fs_used /boot}${color}/${color2}${fs_size /boot}${color6}]${color} ${color6}[${color1}root${color} ${color2}${fs_used_perc /}%${color} ${color2}${fs_used /}${color}/${color2}${fs_size /}${color6}]${color} ${color6}[${color1}swap${color} ${color2}$swapperc%${color} ${color2}$swap${color}/${color2}$swapmax${color6}]${color} ${color6}─┤    │${color}
 ${alignr}${offset -10}${color2}${fs_bar 7,120 /boot/}${color} ${color1}boot${color} ${color2}${fs_bar 7,135 /}${color} ${color1}root${color} ${color2}${swapbar 7,120}${color} ${color1}swap${color} ${color6}─┘    │${color}
 ${alignr}${offset -10}${color6}─┘${color}

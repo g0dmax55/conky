@@ -61,6 +61,21 @@ nvidia_driver_version() {
     printf '%s\n' "not-installed"
 }
 
+find_nvcc() {
+    if command -v nvcc >/dev/null 2>&1; then
+        command -v nvcc
+        return 0
+    fi
+    local candidate
+    for candidate in /usr/local/cuda/bin/nvcc /usr/local/cuda-*/bin/nvcc /usr/bin/nvcc /opt/cuda/bin/nvcc; do
+        if [ -x "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 cuda_runtime_version() {
     local value
 
@@ -72,26 +87,33 @@ cuda_runtime_version() {
         return
     fi
 
-    value="$(
-        nvcc --version 2>/dev/null | sed -n 's/.*release \([^,]*\),.*/\1/p' | first_line | trim
-    )"
-    if [ -n "$value" ]; then
-        printf '%s\n' "$value"
-        return
+    local nvcc_bin
+    nvcc_bin="$(find_nvcc 2>/dev/null)"
+    if [ -n "$nvcc_bin" ]; then
+        value="$(
+            "$nvcc_bin" --version 2>/dev/null | sed -n 's/.*release \([^,]*\),.*/\1/p' | first_line | trim
+        )"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
     fi
 
     printf '%s\n' "not-installed"
 }
 
 cuda_toolkit_version() {
-    local value
-
-    value="$(
-        nvcc --version 2>/dev/null | sed -n 's/.*release \([^,]*\),.*/\1/p' | first_line | trim
-    )"
-    if [ -n "$value" ]; then
-        printf '%s\n' "$value"
-        return
+    local nvcc_bin
+    nvcc_bin="$(find_nvcc 2>/dev/null)"
+    if [ -n "$nvcc_bin" ]; then
+        local value
+        value="$(
+            "$nvcc_bin" --version 2>/dev/null | sed -n 's/.*release \([^,]*\),.*/\1/p' | first_line | trim
+        )"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
     fi
 
     printf '%s\n' "not-installed"

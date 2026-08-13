@@ -42,5 +42,5 @@ conky.config = {
 }
 
 conky.text = [[
-${execpi 60 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/market_tracker.sh}
+${execpi 60 /home/g0dmax55/conky/g0dmax55-conky/scripts/market_tracker.sh}
 ]]

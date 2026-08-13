@@ -42,5 +42,5 @@ conky.config = {
 }
 
 conky.text = [[
-${execpi 600 /home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/system_versions.sh}
+${execpi 600 /home/g0dmax55/conky/g0dmax55-conky/scripts/system_versions.sh}
 ]]

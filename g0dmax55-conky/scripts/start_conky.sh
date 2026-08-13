@@ -10,20 +10,21 @@ pkill -f ssh_remote_daemon.sh 2>/dev/null
 sleep 1
 
 # Start Daemons
-/home/g0dmax55/Desktop/conky/g0dmax55-conky/scripts/ssh_remote_daemon.sh &
+setsid /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_daemon.sh >/dev/null 2>&1 &
 
 
 # Start Conky Instances
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conkyrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conkyrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-networkrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-networkrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-netstatrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-netstatrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-system-updatesrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-system-updatesrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-versionsrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-versionsrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-marketsrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-marketsrc >/dev/null 2>&1 &
 sleep 1
-conky -c /home/g0dmax55/Desktop/conky/g0dmax55-conky/.g0dmax55-conky-sshrc &
+setsid conky -c /home/g0dmax55/conky/g0dmax55-conky/.g0dmax55-conky-sshrc >/dev/null 2>&1 &
+sleep 1

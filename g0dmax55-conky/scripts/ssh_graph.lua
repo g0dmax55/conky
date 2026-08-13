@@ -1,11 +1,9 @@
 -- SSH Remote Bandwidth Graph - Lua/Cairo for Conky
 -- Draws scrolling red gradient graphs matching the local network monitor style
 
--- Store history for scrolling effect
 ssh_history = ssh_history or {}
 local MAX_POINTS = 400
 
--- Read a value from cache file
 local function read_cache(path)
     local f = io.open(path, "r")
     if f then
@@ -20,17 +18,37 @@ end
 function conky_draw_ssh_graphs()
     if conky_window == nil then return end
 
-    -- Try loading cairo 
-    local status, err = pcall(function() require 'cairo' end)
+    local ok, cairo = pcall(require, 'cairo')
+    if not ok or type(cairo) ~= 'table' then return end
+    local ok_xlib, cairo_xlib = pcall(require, 'cairo_xlib')
 
-    local cs = cairo_xlib_surface_create(
+    local surface_create = cairo.xlib_surface_create or (type(cairo_xlib) == 'table' and cairo_xlib.surface_create) or _G.cairo_xlib_surface_create
+    local create = cairo.create or _G.cairo_create
+    if not surface_create or not create then return end
+
+    local cs = surface_create(
         conky_window.display,
         conky_window.drawable,
         conky_window.visual,
         conky_window.width,
         conky_window.height
     )
-    local cr = cairo_create(cs)
+    local cr = create(cs)
+
+    local set_source_rgba = cairo.set_source_rgba or _G.cairo_set_source_rgba
+    local set_line_width = cairo.set_line_width or _G.cairo_set_line_width
+    local rectangle = cairo.rectangle or _G.cairo_rectangle
+    local stroke = cairo.stroke or _G.cairo_stroke
+    local save = cairo.save or _G.cairo_save
+    local clip = cairo.clip or _G.cairo_clip
+    local pattern_create_linear = cairo.pattern_create_linear or _G.cairo_pattern_create_linear
+    local pattern_add_color_stop_rgba = cairo.pattern_add_color_stop_rgba or _G.cairo_pattern_add_color_stop_rgba
+    local set_source = cairo.set_source or _G.cairo_set_source
+    local fill = cairo.fill or _G.cairo_fill
+    local pattern_destroy = cairo.pattern_destroy or _G.cairo_pattern_destroy
+    local restore = cairo.restore or _G.cairo_restore
+    local destroy = cairo.destroy or _G.cairo_destroy
+    local surface_destroy = cairo.surface_destroy or _G.cairo_surface_destroy
 
     -- Graph configuration
     local graphs = {
@@ -66,18 +84,18 @@ function conky_draw_ssh_graphs()
         end
 
         -- Draw border
-        cairo_set_source_rgba(cr, 0.6, 0.6, 0.6, 0.3)
-        cairo_set_line_width(cr, 1)
-        cairo_rectangle(cr, g.x + 6, g.y, g.width, g.height)
-        cairo_stroke(cr)
+        set_source_rgba(cr, 0.6, 0.6, 0.6, 0.3)
+        set_line_width(cr, 1)
+        rectangle(cr, g.x + 6, g.y, g.width, g.height)
+        stroke(cr)
 
         -- Draw filled graph area
         local num_points = #ssh_history[i]
         local step = g.width / MAX_POINTS
 
-        cairo_save(cr)
-        cairo_rectangle(cr, g.x + 6, g.y, g.width, g.height)
-        cairo_clip(cr)
+        save(cr)
+        rectangle(cr, g.x + 6, g.y, g.width, g.height)
+        clip(cr)
 
         -- Draw bars with red gradient (440000 -> FF0000)
         for j = 1, num_points do
@@ -86,21 +104,21 @@ function conky_draw_ssh_graphs()
                 local bar_height = (val / 100) * g.height
                 local bar_x = g.x + 6 + (j - 1) * step
 
-                local pat = cairo_pattern_create_linear(0, g.y + g.height, 0, g.y + g.height - bar_height)
-                cairo_pattern_add_color_stop_rgba(pat, 0, 0.267, 0, 0, 0.9)
-                cairo_pattern_add_color_stop_rgba(pat, 1, 1, 0, 0, 0.9)
-                cairo_set_source(cr, pat)
+                local pat = pattern_create_linear(0, g.y + g.height, 0, g.y + g.height - bar_height)
+                pattern_add_color_stop_rgba(pat, 0, 0.267, 0, 0, 0.9)
+                pattern_add_color_stop_rgba(pat, 1, 1, 0, 0, 0.9)
+                set_source(cr, pat)
 
-                cairo_rectangle(cr, bar_x, g.y + g.height - bar_height, step + 0.5, bar_height)
-                cairo_fill(cr)
+                rectangle(cr, bar_x, g.y + g.height - bar_height, step + 0.5, bar_height)
+                fill(cr)
 
-                cairo_pattern_destroy(pat)
+                pattern_destroy(pat)
             end
         end
 
-        cairo_restore(cr)
+        restore(cr)
     end
 
-    cairo_destroy(cr)
-    cairo_surface_destroy(cs)
+    destroy(cr)
+    surface_destroy(cs)
 end
