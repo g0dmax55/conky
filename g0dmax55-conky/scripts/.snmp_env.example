@@ -1,0 +1,14 @@
+# SNMP & SSH Server Configuration Template
+# Copy this file to .snmp_env and fill in your server credentials
+
+SERVER_IP="your_server_ip_or_hostname"
+SSH_PORT="22"
+USERNAME="your_username"
+PASSWORD="your_password"
+
+# SNMP Settings
+SNMP_COMMUNITY="public"
+SNMP_VERSION="2c"
+IF_INDEX="1"
+LOCAL_TUNNEL_PORT="1161"
+POLL_INTERVAL="1.0"

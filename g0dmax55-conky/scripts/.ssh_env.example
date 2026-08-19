@@ -1,5 +1,0 @@
-# Remote SSH Server Configuration for Conky
-SERVER_IP="your.remote.server.ip"
-USERNAME="your_username"
-PASSWORD="your_password"    # Optional if using sshpass; leave empty if using SSH key auth
-INTERFACE="eth0"            # Network interface on the remote server (e.g. eth0, ens3, wlan0)

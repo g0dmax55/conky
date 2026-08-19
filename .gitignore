@@ -1,1 +1,4 @@
 g0dmax55-conky/scripts/.ssh_env
+g0dmax55-conky/scripts/.snmp_env
+**/__pycache__/
+*.pyc

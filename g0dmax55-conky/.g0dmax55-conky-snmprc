@@ -47,12 +47,12 @@ conky.config = {
 
 conky.text = [[
 ${voffset 5}
-${alignr}${color1}SSH${color} ${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_status.sh}
-${alignr}${color1}REMOTE SSH DOWNLOAD${color}
-${alignr}${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_rx_text.sh}
-${execbar 35,400 /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_rx.sh}
+${alignr}${color2}SNMP${color} ${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_status.sh}
+${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_rx_app.sh}${alignr}${color1}REMOTE ${color2}SNMP${color1} DOWNLOAD${color}
+${alignr}${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_rx_text.sh}
+${execgraph /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_rx.sh 35,400 440000 FF0000 -t}
 ${voffset 3}
-${alignr}${color1}REMOTE SSH UPLOAD${color}
-${alignr}${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_tx_text.sh}
-${execbar 35,400 /home/g0dmax55/conky/g0dmax55-conky/scripts/ssh_remote_tx.sh}
+${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_tx_app.sh}${alignr}${color1}REMOTE ${color2}SNMP${color1} UPLOAD${color}
+${alignr}${execpi 1 /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_tx_text.sh}
+${execgraph /home/g0dmax55/conky/g0dmax55-conky/scripts/snmp_remote_tx.sh 35,400 004400 00FF00 -t}
 ]]
