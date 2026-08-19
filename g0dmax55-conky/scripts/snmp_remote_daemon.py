@@ -48,6 +48,7 @@ def read_env():
         "PASSWORD": "",
         "SNMP_COMMUNITY": "public",
         "SNMP_VERSION": "2c",
+        "IF_NAME": "eth0",
         "IF_INDEX": "1",
         "LOCAL_TUNNEL_PORT": "1161",
         "POLL_INTERVAL": "1.0",
@@ -155,6 +156,36 @@ def start_tunnel(env):
         return is_tunnel_alive(tunnel_port)
     except Exception:
         return False
+
+
+def resolve_if_index(env):
+    """Auto-resolves interface index dynamically from interface name (e.g. eth0)."""
+    target_name = env.get("IF_NAME", "eth0").strip()
+    tunnel_port = env.get("LOCAL_TUNNEL_PORT", "1161")
+    snmp_target = f"tcp:localhost:{tunnel_port}"
+    cmd = [
+        "snmpwalk",
+        f"-v{env.get('SNMP_VERSION', '2c')}",
+        "-c", env.get("SNMP_COMMUNITY", "public"),
+        "-On",
+        "-t", "2",
+        "-r", "1",
+        snmp_target,
+        "1.3.6.1.2.1.31.1.1.1.1"
+    ]
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=3.0, text=True)
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if "=" in line:
+                oid_part, val_part = line.split("=", 1)
+                oid_part = oid_part.strip().rstrip(".")
+                val = val_part.replace("STRING:", "").strip().strip('"').strip("'")
+                if val == target_name:
+                    return oid_part.split(".")[-1]
+    except Exception:
+        pass
+    return env.get("IF_INDEX", "1")
 
 
 def rate_to_pct(rate):
@@ -416,17 +447,17 @@ def main():
     fail_count = 0
     backoff_delay = 1.0
 
+    current_if_index = None
+
     while True:
         env = read_env()
-        if not env["SERVER_IP"] or not env["USERNAME"] or not env["IF_INDEX"]:
+        if not env["SERVER_IP"] or not env["USERNAME"]:
             init_cache("OFFLINE")
             time.sleep(3)
             continue
 
         tunnel_port = env["LOCAL_TUNNEL_PORT"]
         poll_interval = float(env.get("POLL_INTERVAL", 1.0))
-        oid_rx = f"{OID_RX_BASE}.{env['IF_INDEX']}"
-        oid_tx = f"{OID_TX_BASE}.{env['IF_INDEX']}"
 
         # -------------------------------------------------------------
         # 1. Check local internet connectivity on connection failures
@@ -456,10 +487,17 @@ def main():
                     atomic_write(CACHE_STATUS, "DISCONNECTED")
                 time.sleep(backoff_delay)
                 continue
+            else:
+                current_if_index = None
+
+        if not current_if_index:
+            current_if_index = resolve_if_index(env) or env.get("IF_INDEX", "1")
 
         next_tick = time.time() + poll_interval
 
         snmp_target = f"tcp:localhost:{tunnel_port}"
+        oid_rx = f"{OID_RX_BASE}.{current_if_index}"
+        oid_tx = f"{OID_TX_BASE}.{current_if_index}"
         snmp_cmd = [
             "snmpget",
             f"-v{env['SNMP_VERSION']}",
@@ -478,6 +516,9 @@ def main():
         except Exception:
             output_lines = []
 
+        valid = False
+        rx_bytes = 0
+        tx_bytes = 0
         if len(output_lines) >= 2:
             try:
                 rx_bytes = int(''.join(filter(str.isdigit, output_lines[0])))
@@ -485,8 +526,34 @@ def main():
                 valid = True
             except ValueError:
                 valid = False
-        else:
-            valid = False
+
+        if not valid:
+            # Try auto-resolving interface index in case container reboot changed index
+            new_index = resolve_if_index(env)
+            if new_index and new_index != current_if_index:
+                current_if_index = new_index
+                oid_rx = f"{OID_RX_BASE}.{current_if_index}"
+                oid_tx = f"{OID_TX_BASE}.{current_if_index}"
+                snmp_cmd = [
+                    "snmpget",
+                    f"-v{env['SNMP_VERSION']}",
+                    "-c", env["SNMP_COMMUNITY"],
+                    "-Oqv",
+                    "-t", "2",
+                    "-r", "1",
+                    snmp_target,
+                    oid_rx,
+                    oid_tx,
+                ]
+                try:
+                    res = subprocess.run(snmp_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=2.2, text=True)
+                    output_lines = [l.strip().strip('"') for l in res.stdout.strip().splitlines() if l.strip()]
+                    if len(output_lines) >= 2:
+                        rx_bytes = int(''.join(filter(str.isdigit, output_lines[0])))
+                        tx_bytes = int(''.join(filter(str.isdigit, output_lines[1])))
+                        valid = True
+                except Exception:
+                    valid = False
 
         now = time.time()
 
