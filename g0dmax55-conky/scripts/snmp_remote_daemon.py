@@ -233,15 +233,19 @@ def main():
     baseline_rx = None
     baseline_tx = None
 
-    last_poll_time = None
     last_rx_bytes = None
     last_tx_bytes = None
+    last_rx_change_time = None
+    last_tx_change_time = None
+
+    current_rx_rate = 0.0
+    current_tx_rate = 0.0
+    prev_rate_rx = 0
+    prev_rate_tx = 0
 
     rx_peak_history = deque()
     tx_peak_history = deque()
 
-    prev_rate_rx = 0
-    prev_rate_tx = 0
     session_peak_rx = 0
     session_peak_tx = 0
     fail_count = 0
@@ -397,24 +401,52 @@ def main():
             atomic_write(f"{CACHE_RX}_total", session_rx)
             atomic_write(f"{CACHE_TX}_total", session_tx)
 
-            # Instantaneous 1-to-1 Real-time Bandwidth Rate
-            if last_poll_time is not None and last_rx_bytes is not None:
-                dt = now - last_poll_time
-                if dt > 0.1:
-                    delta_rx = max(0, rx_bytes - last_rx_bytes)
-                    delta_tx = max(0, tx_bytes - last_tx_bytes)
-                    final_rx_rate = int(round(delta_rx / dt))
-                    final_tx_rate = int(round(delta_tx / dt))
+            # Net-SNMP Counter-Change Rate Tracking (handles Net-SNMP ~3s MIB cache window smoothly)
+            if last_rx_bytes is not None and last_rx_change_time is not None:
+                if rx_bytes != last_rx_bytes:
+                    dt_rx = now - last_rx_change_time
+                    if dt_rx > 0.1:
+                        raw_rx = max(0, rx_bytes - last_rx_bytes) / dt_rx
+                        if current_rx_rate <= 0.0:
+                            current_rx_rate = raw_rx
+                        else:
+                            current_rx_rate = (0.75 * raw_rx) + (0.25 * current_rx_rate)
+                    last_rx_bytes = rx_bytes
+                    last_rx_change_time = now
                 else:
-                    final_rx_rate = prev_rate_rx
-                    final_tx_rate = prev_rate_tx
+                    # In between counter changes (inside Net-SNMP cache window)
+                    if (now - last_rx_change_time) > 4.5:
+                        current_rx_rate *= 0.5
+                        if current_rx_rate < 10.0:
+                            current_rx_rate = 0.0
             else:
-                final_rx_rate = 0
-                final_tx_rate = 0
+                last_rx_bytes = rx_bytes
+                last_rx_change_time = now
+                current_rx_rate = 0.0
 
-            last_poll_time = now
-            last_rx_bytes = rx_bytes
-            last_tx_bytes = tx_bytes
+            if last_tx_bytes is not None and last_tx_change_time is not None:
+                if tx_bytes != last_tx_bytes:
+                    dt_tx = now - last_tx_change_time
+                    if dt_tx > 0.1:
+                        raw_tx = max(0, tx_bytes - last_tx_bytes) / dt_tx
+                        if current_tx_rate <= 0.0:
+                            current_tx_rate = raw_tx
+                        else:
+                            current_tx_rate = (0.75 * raw_tx) + (0.25 * current_tx_rate)
+                    last_tx_bytes = tx_bytes
+                    last_tx_change_time = now
+                else:
+                    if (now - last_tx_change_time) > 4.5:
+                        current_tx_rate *= 0.5
+                        if current_tx_rate < 10.0:
+                            current_tx_rate = 0.0
+            else:
+                last_tx_bytes = tx_bytes
+                last_tx_change_time = now
+                current_tx_rate = 0.0
+
+            final_rx_rate = int(round(current_rx_rate))
+            final_tx_rate = int(round(current_tx_rate))
 
             # Track rolling peak history for dynamic auto-scaling
             rx_peak_history.append((now, final_rx_rate))
@@ -459,21 +491,35 @@ def main():
 
         else:
             fail_count += 1
-            if fail_count >= 2:
-                atomic_write(CACHE_STATUS, "RECONNECTING")
-            if fail_count >= 3:
-                atomic_write(CACHE_STATUS, "DISCONNECTED")
+            if fail_count <= 2:
+                # Hold previous smoothed rate during brief 1-poll packet latency so continuous downloads don't flicker
+                current_rx_rate *= 0.92
+                current_tx_rate *= 0.92
+                final_rx_rate = int(round(current_rx_rate))
+                final_tx_rate = int(round(current_tx_rate))
+                rx_pct = int(round((final_rx_rate / dynamic_peak_rx) * 100)) if dynamic_peak_rx > 0 else 0
+                tx_pct = int(round((final_tx_rate / dynamic_peak_tx) * 100)) if dynamic_peak_tx > 0 else 0
+                atomic_write(f"{CACHE_RX}_rate", final_rx_rate)
+                atomic_write(f"{CACHE_TX}_rate", final_tx_rate)
+                atomic_write(CACHE_RX, rx_pct)
+                atomic_write(CACHE_TX, tx_pct)
+            elif fail_count >= 3:
+                atomic_write(CACHE_STATUS, "RECONNECTING" if fail_count == 3 else "DISCONNECTED")
                 atomic_write(f"{CACHE_RX}_rate", 0)
                 atomic_write(f"{CACHE_TX}_rate", 0)
                 atomic_write(CACHE_RX, 0)
                 atomic_write(CACHE_TX, 0)
                 atomic_write(f"{CACHE_RX}_trend", "")
                 atomic_write(f"{CACHE_TX}_trend", "")
-                atomic_write(CACHE_RX_APP, "---")
-                atomic_write(CACHE_TX_APP, "---")
-                last_poll_time = None
+                if fail_count >= 4:
+                    atomic_write(CACHE_RX_APP, "---")
+                    atomic_write(CACHE_TX_APP, "---")
                 last_rx_bytes = None
                 last_tx_bytes = None
+                last_rx_change_time = None
+                last_tx_change_time = None
+                current_rx_rate = 0.0
+                current_tx_rate = 0.0
                 rx_peak_history.clear()
                 tx_peak_history.clear()
                 cleanup_tunnel(tunnel_port)
