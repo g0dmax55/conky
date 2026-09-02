@@ -40,13 +40,15 @@ format_bytes() {
 }
 
 RX_RATE=$(get_int "${CACHE_RX}_rate")
+RX_MAX=$(get_int "${CACHE_RX}_max")
 RX_BYTES=$(get_int "${CACHE_RX}_total")
 RX_TREND=$(get_str "${CACHE_RX}_trend")
 RX_RATE_STR="$(format_bytes "$RX_RATE")/s"
+RX_MAX_STR="$(format_bytes "$RX_MAX")/s"
 RX_TOTAL_STR="$(format_bytes "$RX_BYTES")"
 
 if [ -n "$RX_TREND" ]; then
-    echo "\${color6}[\${color6}${RX_RATE_STR} ${RX_TREND}\${color6}]\${color} \${color1}speed\${color} \${color6}[\${color6}${RX_TOTAL_STR}\${color6}]\${color} \${color1}total\${color}"
+    echo "\${color6}[\${color2}${RX_RATE_STR} ${RX_TREND}\${color6}]\${color} \${color1}speed\${color} \${color6}[\${color1}max \${color2}${RX_MAX_STR}\${color6}]\${color} \${color6}[\${color2}${RX_TOTAL_STR}\${color6}]\${color} \${color1}total\${color}"
 else
-    echo "\${color6}[\${color6}${RX_RATE_STR}\${color6}]\${color} \${color1}speed\${color} \${color6}[\${color6}${RX_TOTAL_STR}\${color6}]\${color} \${color1}total\${color}"
+    echo "\${color6}[\${color2}${RX_RATE_STR}\${color6}]\${color} \${color1}speed\${color} \${color6}[\${color1}max \${color2}${RX_MAX_STR}\${color6}]\${color} \${color6}[\${color2}${RX_TOTAL_STR}\${color6}]\${color} \${color1}total\${color}"
 fi

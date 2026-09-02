@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-High-Precision Robust SNMP Bandwidth Monitor Daemon for Conky
-Features:
-- Internet Connectivity Detection & Fallback (NO_INTERNET / RECONNECTING / OFFLINE)
+High-Precision Robust SNMP Bandwidth Monitor Daemon for Conky (Pure Local SNMP)
+- 100% Client-Side Processing (ZERO scripts/probes running on the remote server)
+- Pure SNMP over encrypted SSH Port Forwarding Tunnel (-L 1161:localhost:161 -N)
 - Multi-sample sliding window with Graceful Decay Hold (5-8s smooth fadeout)
 - Logarithmic dynamic graph scaling (prominent visible graph waves at all speeds)
 - Single-call SNMP multi-OID polling (RX & TX)
@@ -18,8 +18,6 @@ import math
 import socket
 import subprocess
 import signal
-import threading
-import json
 from collections import deque
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,10 +32,6 @@ CACHE_TX_APP = "/tmp/.g0dmax55_conky_remote_snmp_tx_app"
 
 OID_RX_BASE = "1.3.6.1.2.1.31.1.1.1.6"   # ifHCInOctets
 OID_TX_BASE = "1.3.6.1.2.1.31.1.1.1.10"  # ifHCOutOctets
-
-app_probe_proc = None
-socket_live_rx_rate = 0.0
-socket_live_tx_rate = 0.0
 
 
 def read_env():
@@ -91,6 +85,8 @@ def init_cache(status="OFFLINE"):
     atomic_write(CACHE_TX, "0")
     atomic_write(f"{CACHE_RX}_rate", "0")
     atomic_write(f"{CACHE_TX}_rate", "0")
+    atomic_write(f"{CACHE_RX}_max", str(MIN_PEAK_FLOOR))
+    atomic_write(f"{CACHE_TX}_max", str(MIN_PEAK_FLOOR))
     atomic_write(f"{CACHE_RX}_total", "0")
     atomic_write(f"{CACHE_TX}_total", "0")
     atomic_write(f"{CACHE_RX}_trend", "")
@@ -158,9 +154,8 @@ def start_tunnel(env):
         return False
 
 
-def resolve_if_index(env):
-    """Auto-resolves interface index dynamically from interface name (e.g. eth0)."""
-    target_name = env.get("IF_NAME", "eth0").strip()
+def resolve_all_interfaces(env):
+    """Auto-resolves all interface indices dynamically."""
     tunnel_port = env.get("LOCAL_TUNNEL_PORT", "1161")
     snmp_target = f"tcp:localhost:{tunnel_port}"
     cmd = [
@@ -173,35 +168,46 @@ def resolve_if_index(env):
         snmp_target,
         "1.3.6.1.2.1.31.1.1.1.1"
     ]
+    ifaces = {}
     try:
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=3.0, text=True)
         for line in res.stdout.splitlines():
-            line = line.strip()
             if "=" in line:
                 oid_part, val_part = line.split("=", 1)
-                oid_part = oid_part.strip().rstrip(".")
-                val = val_part.replace("STRING:", "").strip().strip('"').strip("'")
-                if val == target_name:
-                    return oid_part.split(".")[-1]
+                idx = oid_part.strip().rstrip(".").split(".")[-1]
+                name = val_part.replace("STRING:", "").strip().strip('"').strip("'")
+                ifaces[idx] = name
     except Exception:
         pass
-    return env.get("IF_INDEX", "1")
+    return ifaces
 
 
-def rate_to_pct(rate):
-    """Logarithmic dynamic scaling from 16 B/s (0%) to 100 MB/s (100%)."""
-    if rate <= 16:
+def resolve_if_index(env):
+    """Auto-resolves single interface index dynamically from interface name (e.g. eth0)."""
+    target_name = env.get("IF_NAME", "eth0").strip()
+    ifaces = resolve_all_interfaces(env)
+    for idx, name in ifaces.items():
+        if name.lower() == target_name.lower():
+            return idx
+    return None
+
+
+MIN_PEAK_FLOOR = 64 * 1024       # 64 KB/s floor: prevents small idle noise from saturating 100% graph
+PEAK_WINDOW_SECONDS = 60.0       # 60s rolling window for dynamic peak auto-scaling
+
+
+def calculate_dynamic_pct(rate, peak_rate):
+    """Dynamically scales current rate linearly against recent peak with a minimum floor."""
+    if rate <= 0:
         return 0
-    min_log = math.log10(16)
-    max_log = math.log10(100 * 1024 * 1024)
-    cur_log = math.log10(rate)
-    pct = int(round(((cur_log - min_log) / (max_log - min_log)) * 100))
-    return max(5, min(100, pct))
+    effective_peak = max(MIN_PEAK_FLOOR, peak_rate)
+    pct = int(round((rate / effective_peak) * 100))
+    return max(1, min(100, pct))
 
 
 def detect_trend(current_rate, prev_rate, is_decaying=False):
     """Detects bandwidth rate variations and returns a formatted Conky badge."""
-    if current_rate <= 32:
+    if current_rate <= 1024:
         return ""
 
     if is_decaying:
@@ -209,236 +215,30 @@ def detect_trend(current_rate, prev_rate, is_decaying=False):
 
     delta = current_rate - prev_rate
 
-    if delta >= 500 * 1024 or (prev_rate > 1024 and current_rate >= prev_rate * 1.4):
+    if delta >= 200 * 1024 or (prev_rate >= 50 * 1024 and current_rate >= prev_rate * 1.5):
         return "${color4}▲ SPIKE${color}"
-    elif delta >= 50 * 1024 or (prev_rate > 32 and current_rate >= prev_rate * 1.3):
+    elif delta >= 50 * 1024 or (prev_rate >= 20 * 1024 and current_rate >= prev_rate * 1.3):
         return "${color3}▲ RISING${color}"
-    elif delta <= -500 * 1024 or (current_rate <= prev_rate * 0.6 and prev_rate > 500 * 1024):
+    elif delta <= -200 * 1024 or (current_rate <= prev_rate * 0.5 and prev_rate >= 100 * 1024):
         return "${color6}▼ DROPPING${color}"
-    elif delta <= -50 * 1024 or (current_rate <= prev_rate * 0.7 and prev_rate > 1024):
+    elif delta <= -50 * 1024 or (current_rate <= prev_rate * 0.7 and prev_rate >= 50 * 1024):
         return "${color1}▼ FALLING${color}"
     else:
         return "${color2}━ STEADY${color}"
 
 
-def remote_app_probe_worker(stop_event):
-    global app_probe_proc, socket_live_rx_rate, socket_live_tx_rate
-
-    REMOTE_PYTHON_PROBE = r'''
-import subprocess, re, time, sys, json, os
-
-def resolve_proc_name(pid, comm):
-    try:
-        with open(f"/proc/{pid}/cmdline", "rb") as f:
-            raw = f.read()
-        args = [a.decode("utf-8", errors="ignore").strip() for a in raw.split(b"\x00") if a.strip()]
-        if not args:
-            return (comm or "system").split(":")[0].strip()
-        first_arg = args[0]
-        if first_arg.startswith("sshd:") or first_arg.startswith("sshd ") or comm == "sshd":
-            return "sshd"
-        exe = os.path.basename(first_arg).split(":")[0].strip()
-        interpreters = {"python", "python3", "python2", "pypy", "node", "nodejs", "bash", "sh", "zsh", "perl", "ruby", "php"}
-        is_interp = any(exe == interp or exe.startswith(interp + ".") or exe.startswith(interp + "-") for interp in interpreters)
-        if is_interp and len(args) > 1:
-            for i, arg in enumerate(args[1:], start=1):
-                if arg == "-m" and i + 1 < len(args):
-                    return os.path.basename(args[i + 1]).split(":")[0].strip()
-                if arg.startswith("-"):
-                    continue
-                script = os.path.basename(arg).split(":")[0].strip()
-                if script and not script.startswith("-"):
-                    return script
-        if exe == "sshd":
-            return "sshd"
-        return exe or (comm or "system").split(":")[0].strip()
-    except Exception:
-        return (comm or "system").split(":")[0].strip()
-
-def sample():
-    p = subprocess.run(["ss", "-tupien", "state", "established"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    sockets = {}
-    cur_proc = None
-    cur_key = None
-    for line in p.stdout.splitlines():
-        line_str = line.strip()
-        if not line_str or line_str.startswith("Failed") or line_str.startswith("Netid") or line_str.startswith("State") or line_str.startswith("Recv-Q"):
-            continue
-        if not line.startswith("\t") and not line.startswith(" "):
-            parts = line_str.split()
-            if len(parts) >= 5:
-                cur_key = f"{parts[3]}->{parts[4]}"
-            else:
-                cur_key = line_str
-            m = re.search(r'users:\(\("([^"]+)",pid=(\d+)', line_str)
-            if m:
-                cur_proc = resolve_proc_name(m.group(2), m.group(1))
-            else:
-                cur_proc = None
-        else:
-            bs_m = re.search(r'bytes_sent:(\d+)', line_str)
-            br_m = re.search(r'bytes_received:(\d+)', line_str)
-            bs = int(bs_m.group(1)) if bs_m else 0
-            br = int(br_m.group(1)) if br_m else 0
-            if cur_key:
-                sockets[cur_key] = (cur_proc, bs, br)
-    return sockets
-
-prev_sockets = sample()
-while True:
-    time.sleep(1)
-    cur_sockets = sample()
-    rx_by_proc = {}
-    tx_by_proc = {}
-    for k, (proc, bs, br) in cur_sockets.items():
-        if k in prev_sockets:
-            _, p_bs, p_br = prev_sockets[k]
-            d_tx = max(0, bs - p_bs)
-            d_rx = max(0, br - p_br)
-            pname = proc or "system"
-            if d_rx > 0:
-                rx_by_proc[pname] = rx_by_proc.get(pname, 0) + d_rx
-            if d_tx > 0:
-                tx_by_proc[pname] = tx_by_proc.get(pname, 0) + d_tx
-                
-    rx_candidates = [p for p in rx_by_proc.items() if p[0] != "system"] or list(rx_by_proc.items())
-    tx_candidates = [p for p in tx_by_proc.items() if p[0] != "system"] or list(tx_by_proc.items())
-    
-    top_rx = max(rx_candidates, key=lambda x: x[1]) if rx_candidates else ("---", 0)
-    top_tx = max(tx_candidates, key=lambda x: x[1]) if tx_candidates else ("---", 0)
-    
-    out = {"rx_app": top_rx[0], "rx_rate": top_rx[1], "tx_app": top_tx[0], "tx_rate": top_tx[1]}
-    sys.stdout.write(json.dumps(out) + "\n")
-    sys.stdout.flush()
-    prev_sockets = cur_sockets
-'''
-
-    last_active_time = 0.0
-
-    while not stop_event.is_set():
-        env = read_env()
-        if not env["SERVER_IP"] or not env["USERNAME"]:
-            time.sleep(2)
-            continue
-
-        if not has_internet_connection():
-            atomic_write(CACHE_RX_APP, "---")
-            atomic_write(CACHE_TX_APP, "---")
-            time.sleep(3)
-            continue
-
-        # Deploy/run remote probe cleanly via file
-        remote_probe_setup = f"cat << 'EOF' > /tmp/.g0dmax55_conky_remote_probe.py\n{REMOTE_PYTHON_PROBE.strip()}\nEOF\n"
-        if env.get("PASSWORD"):
-            remote_cmd = f"{remote_probe_setup}echo '{env['PASSWORD']}' | sudo -S python3 -u /tmp/.g0dmax55_conky_remote_probe.py"
-            ssh_cmd = [
-                "sshpass", "-p", env["PASSWORD"],
-                "ssh",
-                "-p", str(env["SSH_PORT"]),
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "ConnectTimeout=5",
-                "-o", "ServerAliveInterval=5",
-                "-o", "ServerAliveCountMax=2",
-                f"{env['USERNAME']}@{env['SERVER_IP']}",
-                remote_cmd
-            ]
-        else:
-            remote_cmd = f"{remote_probe_setup}sudo -n python3 -u /tmp/.g0dmax55_conky_remote_probe.py"
-            ssh_cmd = [
-                "ssh",
-                "-p", str(env["SSH_PORT"]),
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "ConnectTimeout=5",
-                "-o", "ServerAliveInterval=5",
-                "-o", "ServerAliveCountMax=2",
-                f"{env['USERNAME']}@{env['SERVER_IP']}",
-                remote_cmd
-            ]
-
-        try:
-            app_probe_proc = subprocess.Popen(
-                ssh_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                bufsize=1
-            )
-
-            while not stop_event.is_set():
-                line = app_probe_proc.stdout.readline()
-                if not line:
-                    break
-                line = line.strip()
-                if not line or not line.startswith("{"):
-                    continue
-
-                try:
-                    data = json.loads(line)
-                    rx_app = data.get("rx_app", "---")
-                    rx_rate = data.get("rx_rate", 0)
-                    tx_app = data.get("tx_app", "---")
-                    tx_rate = data.get("tx_rate", 0)
-
-                    socket_live_rx_rate = float(rx_rate)
-                    socket_live_tx_rate = float(tx_rate)
-
-                    now = time.time()
-                    APP_MIN_THRESHOLD = 100  # High-sensitivity threshold (100 B/s)
-
-                    is_rx_active = (rx_rate >= APP_MIN_THRESHOLD) and (rx_app not in ("---", "system"))
-                    is_tx_active = (tx_rate >= APP_MIN_THRESHOLD) and (tx_app not in ("---", "system"))
-
-                    if is_rx_active or is_tx_active:
-                        # If one direction is active and the other is empty/idle, mirror the active app so BOTH lines show the name
-                        final_rx = rx_app if is_rx_active else tx_app
-                        final_tx = tx_app if is_tx_active else rx_app
-
-                        atomic_write(CACHE_RX_APP, final_rx)
-                        atomic_write(CACHE_TX_APP, final_tx)
-                        last_active_time = now
-                    else:
-                        if now - last_active_time > 4.0:
-                            atomic_write(CACHE_RX_APP, "---")
-                            atomic_write(CACHE_TX_APP, "---")
-
-                except Exception:
-                    pass
-
-            if app_probe_proc and app_probe_proc.poll() is None:
-                app_probe_proc.terminate()
-                app_probe_proc.wait(timeout=1.0)
-        except Exception:
-            pass
-        finally:
-            socket_live_rx_rate = 0.0
-            socket_live_tx_rate = 0.0
-            atomic_write(CACHE_RX_APP, "---")
-            atomic_write(CACHE_TX_APP, "---")
-            if app_probe_proc and app_probe_proc.poll() is None:
-                try:
-                    app_probe_proc.kill()
-                except Exception:
-                    pass
-
-        if not stop_event.is_set():
-            time.sleep(2)
-
-
 def main():
     init_cache("RECONNECTING")
-
-    stop_event = threading.Event()
-    probe_thread = threading.Thread(target=remote_app_probe_worker, args=(stop_event,), daemon=True)
-    probe_thread.start()
 
     baseline_rx = None
     baseline_tx = None
 
-    history = deque()
-    WINDOW_SECONDS = 2.5
+    last_poll_time = None
+    last_rx_bytes = None
+    last_tx_bytes = None
 
-    display_rx_rate = 0.0
-    display_tx_rate = 0.0
+    rx_peak_history = deque()
+    tx_peak_history = deque()
 
     prev_rate_rx = 0
     prev_rate_tx = 0
@@ -448,6 +248,7 @@ def main():
     backoff_delay = 1.0
 
     current_if_index = None
+    current_if_indices = None
 
     while True:
         env = read_env()
@@ -458,6 +259,7 @@ def main():
 
         tunnel_port = env["LOCAL_TUNNEL_PORT"]
         poll_interval = float(env.get("POLL_INTERVAL", 1.0))
+        iface_name = env.get("IF_NAME", "eth0")
 
         # -------------------------------------------------------------
         # 1. Check local internet connectivity on connection failures
@@ -471,6 +273,8 @@ def main():
                 atomic_write(CACHE_TX, 0)
                 atomic_write(f"{CACHE_RX}_trend", "")
                 atomic_write(f"{CACHE_TX}_trend", "")
+                atomic_write(CACHE_RX_APP, "---")
+                atomic_write(CACHE_TX_APP, "---")
                 cleanup_tunnel(tunnel_port)
                 time.sleep(3)
                 continue
@@ -485,30 +289,54 @@ def main():
                 backoff_delay = min(8.0, 1.5 * fail_count)
                 if fail_count >= 2:
                     atomic_write(CACHE_STATUS, "DISCONNECTED")
+                    atomic_write(CACHE_RX_APP, "---")
+                    atomic_write(CACHE_TX_APP, "---")
                 time.sleep(backoff_delay)
                 continue
             else:
                 current_if_index = None
-
-        if not current_if_index:
-            current_if_index = resolve_if_index(env) or env.get("IF_INDEX", "1")
+                current_if_indices = None
 
         next_tick = time.time() + poll_interval
+        is_all_mode = (iface_name.lower() == "all")
 
-        snmp_target = f"tcp:localhost:{tunnel_port}"
-        oid_rx = f"{OID_RX_BASE}.{current_if_index}"
-        oid_tx = f"{OID_TX_BASE}.{current_if_index}"
-        snmp_cmd = [
-            "snmpget",
-            f"-v{env['SNMP_VERSION']}",
-            "-c", env["SNMP_COMMUNITY"],
-            "-Oqv",
-            "-t", "2",
-            "-r", "1",
-            snmp_target,
-            oid_rx,
-            oid_tx,
-        ]
+        if is_all_mode:
+            if not current_if_indices:
+                all_ifaces = resolve_all_interfaces(env)
+                current_if_indices = list(all_ifaces.keys()) if all_ifaces else [env.get("IF_INDEX", "1")]
+
+            snmp_target = f"tcp:localhost:{tunnel_port}"
+            oids_rx = [f"{OID_RX_BASE}.{idx}" for idx in current_if_indices]
+            oids_tx = [f"{OID_TX_BASE}.{idx}" for idx in current_if_indices]
+            snmp_cmd = [
+                "snmpget",
+                f"-v{env['SNMP_VERSION']}",
+                "-c", env["SNMP_COMMUNITY"],
+                "-Oqv",
+                "-t", "2",
+                "-r", "1",
+                snmp_target,
+            ] + oids_rx + oids_tx
+            display_iface_label = "ALL"
+        else:
+            if not current_if_index:
+                current_if_index = resolve_if_index(env) or env.get("IF_INDEX", "1")
+
+            snmp_target = f"tcp:localhost:{tunnel_port}"
+            oid_rx = f"{OID_RX_BASE}.{current_if_index}"
+            oid_tx = f"{OID_TX_BASE}.{current_if_index}"
+            snmp_cmd = [
+                "snmpget",
+                f"-v{env['SNMP_VERSION']}",
+                "-c", env["SNMP_COMMUNITY"],
+                "-Oqv",
+                "-t", "2",
+                "-r", "1",
+                snmp_target,
+                oid_rx,
+                oid_tx,
+            ]
+            display_iface_label = iface_name
 
         try:
             res = subprocess.run(snmp_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=2.2, text=True)
@@ -519,48 +347,45 @@ def main():
         valid = False
         rx_bytes = 0
         tx_bytes = 0
-        if len(output_lines) >= 2:
-            try:
-                rx_bytes = int(''.join(filter(str.isdigit, output_lines[0])))
-                tx_bytes = int(''.join(filter(str.isdigit, output_lines[1])))
-                valid = True
-            except ValueError:
-                valid = False
+
+        if is_all_mode:
+            if output_lines:
+                n = len(current_if_indices)
+                rx_vals = []
+                tx_vals = []
+                for i in range(min(n, len(output_lines))):
+                    digits = "".join(filter(str.isdigit, output_lines[i]))
+                    if digits:
+                        rx_vals.append(int(digits))
+                for i in range(n, min(2 * n, len(output_lines))):
+                    digits = "".join(filter(str.isdigit, output_lines[i]))
+                    if digits:
+                        tx_vals.append(int(digits))
+                if rx_vals or tx_vals:
+                    rx_bytes = sum(rx_vals)
+                    tx_bytes = sum(tx_vals)
+                    valid = True
+        else:
+            if len(output_lines) >= 2:
+                rx_digits = "".join(filter(str.isdigit, output_lines[0]))
+                tx_digits = "".join(filter(str.isdigit, output_lines[1]))
+                if rx_digits or tx_digits:
+                    rx_bytes = int(rx_digits) if rx_digits else 0
+                    tx_bytes = int(tx_digits) if tx_digits else 0
+                    valid = True
 
         if not valid:
-            # Try auto-resolving interface index in case container reboot changed index
-            new_index = resolve_if_index(env)
-            if new_index and new_index != current_if_index:
-                current_if_index = new_index
-                oid_rx = f"{OID_RX_BASE}.{current_if_index}"
-                oid_tx = f"{OID_TX_BASE}.{current_if_index}"
-                snmp_cmd = [
-                    "snmpget",
-                    f"-v{env['SNMP_VERSION']}",
-                    "-c", env["SNMP_COMMUNITY"],
-                    "-Oqv",
-                    "-t", "2",
-                    "-r", "1",
-                    snmp_target,
-                    oid_rx,
-                    oid_tx,
-                ]
-                try:
-                    res = subprocess.run(snmp_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=2.2, text=True)
-                    output_lines = [l.strip().strip('"') for l in res.stdout.strip().splitlines() if l.strip()]
-                    if len(output_lines) >= 2:
-                        rx_bytes = int(''.join(filter(str.isdigit, output_lines[0])))
-                        tx_bytes = int(''.join(filter(str.isdigit, output_lines[1])))
-                        valid = True
-                except Exception:
-                    valid = False
+            current_if_indices = None
+            current_if_index = None
 
         now = time.time()
 
-        if valid and rx_bytes > 0:
+        if valid and (rx_bytes > 0 or tx_bytes > 0):
             fail_count = 0
             backoff_delay = 1.0
             atomic_write(CACHE_STATUS, "CONNECTED")
+            atomic_write(CACHE_RX_APP, display_iface_label)
+            atomic_write(CACHE_TX_APP, display_iface_label)
 
             if baseline_rx is None:
                 baseline_rx = rx_bytes
@@ -572,58 +397,42 @@ def main():
             atomic_write(f"{CACHE_RX}_total", session_rx)
             atomic_write(f"{CACHE_TX}_total", session_tx)
 
-            history.append((now, rx_bytes, tx_bytes))
-
-            while len(history) > 2 and (now - history[0][0]) > WINDOW_SECONDS:
-                history.popleft()
-
-            if len(history) >= 2:
-                oldest_time, oldest_rx, oldest_tx = history[0]
-                time_span = now - oldest_time
-
-                if time_span > 0.2:
-                    delta_rx = max(0, rx_bytes - oldest_rx)
-                    delta_tx = max(0, tx_bytes - oldest_tx)
-
-                    raw_rx_rate = delta_rx / time_span
-                    raw_tx_rate = delta_tx / time_span
+            # Instantaneous 1-to-1 Real-time Bandwidth Rate
+            if last_poll_time is not None and last_rx_bytes is not None:
+                dt = now - last_poll_time
+                if dt > 0.1:
+                    delta_rx = max(0, rx_bytes - last_rx_bytes)
+                    delta_tx = max(0, tx_bytes - last_tx_bytes)
+                    final_rx_rate = int(round(delta_rx / dt))
+                    final_tx_rate = int(round(delta_tx / dt))
                 else:
-                    raw_rx_rate = display_rx_rate
-                    raw_tx_rate = display_tx_rate
+                    final_rx_rate = prev_rate_rx
+                    final_tx_rate = prev_rate_tx
             else:
-                raw_rx_rate = 0.0
-                raw_tx_rate = 0.0
+                final_rx_rate = 0
+                final_tx_rate = 0
 
-            effective_rx_rate = max(raw_rx_rate, socket_live_rx_rate)
-            effective_tx_rate = max(raw_tx_rate, socket_live_tx_rate)
+            last_poll_time = now
+            last_rx_bytes = rx_bytes
+            last_tx_bytes = tx_bytes
 
-            # Graceful Decay Hold Algorithm (smooth fadeout)
-            is_rx_decaying = False
-            if effective_rx_rate >= 10:
-                display_rx_rate = effective_rx_rate
-            else:
-                if display_rx_rate >= 10:
-                    display_rx_rate *= 0.72
-                    is_rx_decaying = True
-                    if display_rx_rate < 10:
-                        display_rx_rate = 0.0
-                else:
-                    display_rx_rate = 0.0
+            # Track rolling peak history for dynamic auto-scaling
+            rx_peak_history.append((now, final_rx_rate))
+            tx_peak_history.append((now, final_tx_rate))
 
-            is_tx_decaying = False
-            if effective_tx_rate >= 10:
-                display_tx_rate = effective_tx_rate
-            else:
-                if display_tx_rate >= 10:
-                    display_tx_rate *= 0.72
-                    is_tx_decaying = True
-                    if display_tx_rate < 10:
-                        display_tx_rate = 0.0
-                else:
-                    display_tx_rate = 0.0
+            while rx_peak_history and (now - rx_peak_history[0][0]) > PEAK_WINDOW_SECONDS:
+                rx_peak_history.popleft()
+            while tx_peak_history and (now - tx_peak_history[0][0]) > PEAK_WINDOW_SECONDS:
+                tx_peak_history.popleft()
 
-            final_rx_rate = int(round(display_rx_rate))
-            final_tx_rate = int(round(display_tx_rate))
+            dynamic_peak_rx = max(MIN_PEAK_FLOOR, max((r for _, r in rx_peak_history), default=0))
+            dynamic_peak_tx = max(MIN_PEAK_FLOOR, max((r for _, r in tx_peak_history), default=0))
+
+            # Linear dynamic auto-scaling percentage (0-100%) exactly matching numbers
+            rx_pct = int(round((final_rx_rate / dynamic_peak_rx) * 100)) if dynamic_peak_rx > 0 else 0
+            tx_pct = int(round((final_tx_rate / dynamic_peak_tx) * 100)) if dynamic_peak_tx > 0 else 0
+            rx_pct = max(0, min(100, rx_pct))
+            tx_pct = max(0, min(100, tx_pct))
 
             # Track session peaks
             if final_rx_rate > session_peak_rx:
@@ -634,22 +443,19 @@ def main():
                 atomic_write(f"{CACHE_TX}_peak", session_peak_tx)
 
             # Detect Variation & Trend Badges
-            rx_trend_badge = detect_trend(final_rx_rate, prev_rate_rx, is_rx_decaying)
-            tx_trend_badge = detect_trend(final_tx_rate, prev_rate_tx, is_tx_decaying)
+            rx_trend_badge = detect_trend(final_rx_rate, prev_rate_rx)
+            tx_trend_badge = detect_trend(final_tx_rate, prev_rate_tx)
             prev_rate_rx = final_rx_rate
             prev_rate_tx = final_tx_rate
-
-            atomic_write(f"{CACHE_RX}_trend", rx_trend_badge)
-            atomic_write(f"{CACHE_TX}_trend", tx_trend_badge)
-
-            # Prominent logarithmic percentage (0-100%) for Conky graph
-            rx_pct = rate_to_pct(final_rx_rate)
-            tx_pct = rate_to_pct(final_tx_rate)
 
             atomic_write(CACHE_RX, rx_pct)
             atomic_write(CACHE_TX, tx_pct)
             atomic_write(f"{CACHE_RX}_rate", final_rx_rate)
             atomic_write(f"{CACHE_TX}_rate", final_tx_rate)
+            atomic_write(f"{CACHE_RX}_max", dynamic_peak_rx)
+            atomic_write(f"{CACHE_TX}_max", dynamic_peak_tx)
+            atomic_write(f"{CACHE_RX}_trend", rx_trend_badge)
+            atomic_write(f"{CACHE_TX}_trend", tx_trend_badge)
 
         else:
             fail_count += 1
@@ -663,9 +469,13 @@ def main():
                 atomic_write(CACHE_TX, 0)
                 atomic_write(f"{CACHE_RX}_trend", "")
                 atomic_write(f"{CACHE_TX}_trend", "")
-                history.clear()
-                display_rx_rate = 0.0
-                display_tx_rate = 0.0
+                atomic_write(CACHE_RX_APP, "---")
+                atomic_write(CACHE_TX_APP, "---")
+                last_poll_time = None
+                last_rx_bytes = None
+                last_tx_bytes = None
+                rx_peak_history.clear()
+                tx_peak_history.clear()
                 cleanup_tunnel(tunnel_port)
                 time.sleep(min(6.0, 1.5 * fail_count))
 
@@ -675,12 +485,6 @@ def main():
 
 if __name__ == "__main__":
     def handle_exit(signum, frame):
-        global app_probe_proc
-        if app_probe_proc and app_probe_proc.poll() is None:
-            try:
-                app_probe_proc.kill()
-            except Exception:
-                pass
         env = read_env()
         cleanup_tunnel(env.get("LOCAL_TUNNEL_PORT", "1161"))
         init_cache("OFFLINE")

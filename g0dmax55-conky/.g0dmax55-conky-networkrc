@@ -45,15 +45,15 @@ conky.text = [[
 ${voffset 5}
 ${if_up wlp3s0}${alignr}${color1}DOWNLOAD${color}
 ${alignr}${color6}[${color2}${downspeed wlp3s0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totaldown wlp3s0}${color6}]${color} ${color1}total${color}
-${downspeedgraph wlp3s0 35,300 440000 FF0000 -l -t}
+${downspeedgraph wlp3s0 35,300 440000 FF0000 -t}
 ${voffset 3}
 ${alignr}${color1}UPLOAD${color}
 ${alignr}${color6}[${color2}${upspeed wlp3s0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totalup wlp3s0}${color6}]${color} ${color1}total${color}
-${upspeedgraph wlp3s0 35,300 440000 FF0000 -l -t}${else}${alignr}${color1}DOWNLOAD${color}
+${upspeedgraph wlp3s0 35,300 440000 FF0000 -t}${else}${alignr}${color1}DOWNLOAD${color}
 ${alignr}${color6}[${color2}${downspeed enp2s0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totaldown enp2s0}${color6}]${color} ${color1}total${color}
-${downspeedgraph enp2s0 35,300 440000 FF0000 -l -t}
+${downspeedgraph enp2s0 35,300 440000 FF0000 -t}
 ${voffset 3}
 ${alignr}${color1}UPLOAD${color}
 ${alignr}${color6}[${color2}${upspeed enp2s0}${color6}]${color} ${color1}speed${color} ${color6}[${color2}${totalup enp2s0}${color6}]${color} ${color1}total${color}
-${upspeedgraph enp2s0 35,300 440000 FF0000 -l -t}${endif}
+${upspeedgraph enp2s0 35,300 440000 FF0000 -t}${endif}
 ]]
