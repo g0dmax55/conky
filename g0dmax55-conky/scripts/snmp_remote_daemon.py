@@ -246,6 +246,9 @@ def main():
     rx_peak_history = deque()
     tx_peak_history = deque()
 
+    dynamic_peak_rx = MIN_PEAK_FLOOR
+    dynamic_peak_tx = MIN_PEAK_FLOOR
+
     session_peak_rx = 0
     session_peak_tx = 0
     fail_count = 0
@@ -391,8 +394,9 @@ def main():
             atomic_write(CACHE_RX_APP, display_iface_label)
             atomic_write(CACHE_TX_APP, display_iface_label)
 
-            if baseline_rx is None:
+            if baseline_rx is None or rx_bytes < baseline_rx:
                 baseline_rx = rx_bytes
+            if baseline_tx is None or tx_bytes < baseline_tx:
                 baseline_tx = tx_bytes
 
             session_rx = max(0, rx_bytes - baseline_rx)
